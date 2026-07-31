@@ -1,0 +1,11 @@
+{
+  "name": "tern",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:marketing": "npm run dev --workspace=marketing"
+  }
+}
