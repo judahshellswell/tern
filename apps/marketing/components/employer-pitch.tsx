@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SectionHeading } from "./how-it-works";
 
 const stats = [
@@ -43,6 +44,21 @@ export function EmployerPitch() {
                 </li>
               ))}
             </ul>
+            <Link
+              href="/employers"
+              className="mt-8 inline-flex items-center gap-1.5 text-sm font-semibold text-tide transition-colors hover:text-tide-bright"
+            >
+              More for employers
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M5 12h14M13 6l6 6-6 6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </Link>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:grid-cols-1">

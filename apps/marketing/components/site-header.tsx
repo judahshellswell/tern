@@ -11,25 +11,25 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-ink md:flex">
-          <a href="#how-it-works" className="transition-colors hover:text-tide">
-            How it works
-          </a>
-          <a href="#trust" className="transition-colors hover:text-tide">
-            Trust &amp; safety
-          </a>
-          <a href="#employers" className="transition-colors hover:text-tide">
+          <Link href="/about" className="transition-colors hover:text-tide">
+            About
+          </Link>
+          <Link href="/employers" className="transition-colors hover:text-tide">
             For employers
-          </a>
+          </Link>
+          <Link href="/faq" className="transition-colors hover:text-tide">
+            FAQ
+          </Link>
         </nav>
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <a
-            href="#waitlist"
+          <Link
+            href="/#waitlist"
             className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
           >
             Join waitlist
-          </a>
+          </Link>
         </div>
       </div>
     </header>

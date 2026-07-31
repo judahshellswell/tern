@@ -1,13 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useState } from "react";
 import { joinWaitlist, type WaitlistFormState } from "@/app/actions";
 
 const initialState: WaitlistFormState = { status: "idle", message: "" };
 
-export function WaitlistForm({ id }: { id?: string }) {
+export function WaitlistForm({
+  id,
+  defaultRole = "job_seeker",
+}: {
+  id?: string;
+  defaultRole?: "job_seeker" | "employer";
+}) {
   const [state, formAction, isPending] = useActionState(joinWaitlist, initialState);
-  const [role, setRole] = useState<"job_seeker" | "employer">("job_seeker");
+  const [role, setRole] = useState<"job_seeker" | "employer">(defaultRole);
 
   if (state.status === "success") {
     return (
@@ -86,7 +93,12 @@ export function WaitlistForm({ id }: { id?: string }) {
       )}
 
       <p className="mt-4 text-xs text-granite-soft">
-        Jersey-first. We&rsquo;ll never share your email, and you can unsubscribe anytime.
+        Jersey-first. We&rsquo;ll never share your email, and you can
+        unsubscribe anytime. See our{" "}
+        <Link href="/privacy" className="underline hover:text-tide">
+          privacy policy
+        </Link>
+        .
       </p>
     </form>
   );
