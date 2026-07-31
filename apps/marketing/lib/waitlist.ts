@@ -1,5 +1,5 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { FieldValue } from "firebase-admin/firestore";
+import { getAdminFirestore } from "./firebase-admin";
 
 export type WaitlistRole = "job_seeker" | "employer";
 
@@ -9,33 +9,17 @@ export type WaitlistEntry = {
   createdAt: string;
 };
 
-const DATA_DIR = path.join(process.cwd(), ".data");
-const DATA_FILE = path.join(DATA_DIR, "waitlist.json");
-
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const COLLECTION = "waitlist";
 
 export function isValidEmail(email: string): boolean {
   return EMAIL_PATTERN.test(email);
 }
 
-async function readEntries(): Promise<WaitlistEntry[]> {
-  try {
-    const raw = await fs.readFile(DATA_FILE, "utf-8");
-    return JSON.parse(raw) as WaitlistEntry[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeEntries(entries: WaitlistEntry[]): Promise<void> {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  await fs.writeFile(DATA_FILE, JSON.stringify(entries, null, 2), "utf-8");
-}
-
 /**
- * Local-file waitlist store for pre-launch. Swap this module for a
- * Firestore-backed implementation once `packages/firebase-config` exists —
- * callers only depend on `addToWaitlist`'s signature, not the storage.
+ * Firestore-backed waitlist store. The email address is used as the
+ * document ID so duplicate signups are a single get-or-create rather
+ * than a collection scan.
  */
 export async function addToWaitlist(
   email: string,
@@ -47,14 +31,24 @@ export async function addToWaitlist(
     return { ok: false, reason: "invalid_email" };
   }
 
-  const entries = await readEntries();
+  const db = getAdminFirestore();
+  const ref = db.collection(COLLECTION).doc(normalized);
 
-  if (entries.some((entry) => entry.email === normalized)) {
+  const created = await db.runTransaction(async (tx) => {
+    const doc = await tx.get(ref);
+    if (doc.exists) return false;
+
+    tx.set(ref, {
+      email: normalized,
+      role,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+    return true;
+  });
+
+  if (!created) {
     return { ok: false, reason: "already_registered" };
   }
-
-  entries.push({ email: normalized, role, createdAt: new Date().toISOString() });
-  await writeEntries(entries);
 
   return { ok: true };
 }

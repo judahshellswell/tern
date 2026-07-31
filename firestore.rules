@@ -1,0 +1,18 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Waitlist signups are written only by the Admin SDK (server actions),
+    // which bypasses these rules entirely. No client path should ever
+    // read or write this collection directly.
+    match /waitlist/{email} {
+      allow read, write: if false;
+    }
+
+    // Default-deny everything else until the real schema (users/, jobs/,
+    // etc. — see the Firestore schema doc) is implemented.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
