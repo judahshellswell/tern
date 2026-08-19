@@ -1,0 +1,104 @@
+import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+import { JOB_TYPE_LABELS } from "@/lib/types";
+import { getAdminFirestore } from "@/lib/firebase-admin";
+import { ApplyPanel } from "@/components/jobs/apply-panel";
+
+type Params = { id: string };
+
+async function getJob(id: string) {
+  const snap = await getAdminFirestore().collection("jobs").doc(id).get();
+  if (!snap.exists) return null;
+  const data = snap.data()!;
+  if (data.status !== "published") return null;
+  return {
+    id: snap.id,
+    employerId: data.employerId as string,
+    employerName: data.employerName as string,
+    title: data.title as string,
+    description: data.description as string,
+    type: data.type as keyof typeof JOB_TYPE_LABELS,
+    location: data.location as string,
+    payType: data.payType as string,
+    payMin: data.payMin as number,
+    payMax: data.payMax as number,
+    skills: (data.skills as string[]) ?? [],
+  };
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<Params>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const job = await getJob(id);
+  if (!job) return { title: "Job not found — Tern" };
+  return {
+    title: `${job.title} at ${job.employerName} — Tern`,
+    description: job.description.slice(0, 155),
+  };
+}
+
+export default async function JobDetailPage({
+  params,
+}: {
+  params: Promise<Params>;
+}) {
+  const { id } = await params;
+  const job = await getJob(id);
+  if (!job) notFound();
+
+  return (
+    <>
+      <SiteHeader />
+      <main className="flex-1 px-6 py-16 sm:py-20">
+        <div className="mx-auto max-w-3xl">
+          <span className="rounded-full bg-tide/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-tide">
+            {JOB_TYPE_LABELS[job.type]}
+          </span>
+          <h1 className="mt-4 text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+            {job.title}
+          </h1>
+          <p className="mt-2 text-lg text-granite">{job.employerName}</p>
+
+          <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-sm text-ink">
+            <span>{job.location}</span>
+            <span className="tabular-nums">
+              &pound;{job.payMin}&ndash;&pound;{job.payMax}
+              {job.payType === "hourly" ? "/hr" : ""}
+            </span>
+          </div>
+
+          <p className="mt-8 max-w-[70ch] whitespace-pre-wrap text-[17px] leading-relaxed text-ink">
+            {job.description}
+          </p>
+
+          {job.skills.length > 0 && (
+            <div className="mt-8 flex flex-wrap gap-1.5">
+              {job.skills.map((skill) => (
+                <span
+                  key={skill}
+                  className="rounded-full border border-border-strong px-3 py-1.5 text-sm font-medium text-granite"
+                >
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-10">
+            <ApplyPanel
+              jobId={job.id}
+              jobTitle={job.title}
+              employerId={job.employerId}
+            />
+          </div>
+        </div>
+      </main>
+      <SiteFooter />
+    </>
+  );
+}

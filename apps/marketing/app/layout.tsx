@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Inter } from "next/font/google";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -51,7 +52,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-paper text-ink">
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

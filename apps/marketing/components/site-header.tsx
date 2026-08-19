@@ -1,8 +1,13 @@
+"use client";
+
 import Link from "next/link";
 import { Wordmark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { useAuth } from "./auth/auth-provider";
 
 export function SiteHeader() {
+  const { user, loading } = useAuth();
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-paper/85 backdrop-blur-md">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
@@ -11,6 +16,9 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-medium text-ink md:flex">
+          <Link href="/jobs" className="transition-colors hover:text-tide">
+            Browse jobs
+          </Link>
           <Link href="/about" className="transition-colors hover:text-tide">
             About
           </Link>
@@ -24,12 +32,29 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
-          <Link
-            href="/#waitlist"
-            className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
-          >
-            Join waitlist
-          </Link>
+          {!loading && user ? (
+            <Link
+              href="/dashboard"
+              className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/log-in"
+                className="hidden text-sm font-medium text-ink transition-colors hover:text-tide sm:block"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
+              >
+                Sign up
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </header>
