@@ -9,7 +9,7 @@ import {
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, onSnapshot } from "firebase/firestore";
-import { getClientAuth, getClientFirestore } from "@/lib/firebase-client";
+import { getClientAuth, getClientFirestore, isFirebaseConfigured } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
 
 type AuthContextValue = {
@@ -25,18 +25,30 @@ const AuthContext = createContext<AuthContextValue>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // Known synchronously at mount — not something to "wait" for via an
+  // effect. If false, auth-dependent features degrade to "signed out"
+  // instead of crashing the whole tree, so pages that don't touch auth
+  // (home, about, jobs browse) still work.
+  const [configured] = useState(isFirebaseConfigured);
   const [user, setUser] = useState<User | null>(null);
-  const [authResolved, setAuthResolved] = useState(false);
+  const [authResolved, setAuthResolved] = useState(!configured);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileForUid, setProfileForUid] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!configured) {
+      console.error(
+        "Firebase client config is missing — auth-dependent features are disabled.",
+      );
+      return;
+    }
+
     const unsubscribeAuth = onAuthStateChanged(getClientAuth(), (nextUser) => {
       setUser(nextUser);
       setAuthResolved(true);
     });
     return unsubscribeAuth;
-  }, []);
+  }, [configured]);
 
   useEffect(() => {
     if (!user) return;
