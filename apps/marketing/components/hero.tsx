@@ -14,9 +14,9 @@ export function Hero() {
             Find your first move.
           </h1>
           <p className="mt-6 max-w-[46ch] text-lg text-granite">
-            Tern connects verified early-career talent with verified employers
-            for part-time jobs, apprenticeships, internships and seasonal
-            work — built around potential, not experience.
+            Tern is Jersey&rsquo;s job platform for students and early-career
+            talent — verified part-time jobs, apprenticeships, internships
+            and seasonal work, built around potential, not experience.
           </p>
 
           <div className="mt-10 max-w-md">

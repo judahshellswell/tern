@@ -34,8 +34,7 @@ export function SiteFooter() {
           <div className="max-w-xs">
             <Wordmark className="text-base text-ink" />
             <p className="mt-2 text-sm text-granite">
-              The trusted way for Jersey&rsquo;s early-career talent and
-              employers to find each other.
+              Part-time &amp; entry-level jobs for Jersey students.
             </p>
           </div>
 
