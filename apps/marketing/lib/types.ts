@@ -79,12 +79,18 @@ export type Application = {
   createdAt: string;
 };
 
-export function isUnder18(dateOfBirth: string): boolean {
+function isUnderAge(dateOfBirth: string, age: number): boolean {
   const dob = new Date(dateOfBirth);
-  const eighteenthBirthday = new Date(
-    dob.getFullYear() + 18,
-    dob.getMonth(),
-    dob.getDate(),
-  );
-  return Date.now() < eighteenthBirthday.getTime();
+  const nthBirthday = new Date(dob.getFullYear() + age, dob.getMonth(), dob.getDate());
+  return Date.now() < nthBirthday.getTime();
+}
+
+export function isUnder18(dateOfBirth: string): boolean {
+  return isUnderAge(dateOfBirth, 18);
+}
+
+export const MINIMUM_AGE = 16;
+
+export function isUnderMinimumAge(dateOfBirth: string): boolean {
+  return isUnderAge(dateOfBirth, MINIMUM_AGE);
 }

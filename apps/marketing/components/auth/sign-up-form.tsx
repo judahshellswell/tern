@@ -4,9 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { UserRole } from "@/lib/types";
-import { isUnder18 } from "@/lib/types";
+import { isUnder18, isUnderMinimumAge, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
+import { notifyGuardian } from "@/app/actions";
 
 type Step = "role" | "account" | "details";
 
@@ -28,6 +29,7 @@ export function SignUpForm() {
   const [registrationNumber, setRegistrationNumber] = useState("");
 
   const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
+  const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
 
   function chooseRole(nextRole: UserRole) {
     setRole(nextRole);
@@ -72,6 +74,10 @@ export function SignUpForm() {
   async function handleDetailsSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!uid || !role) return;
+    if (role === "job_seeker" && isUnderMinimumAge(dateOfBirth)) {
+      setError(`You need to be at least ${MINIMUM_AGE} to use Tern.`);
+      return;
+    }
     setError("");
     setIsPending(true);
     try {
@@ -82,6 +88,11 @@ export function SignUpForm() {
           guardianEmail,
           location,
         });
+        if (under18 && guardianEmail) {
+          // Best-effort — the account is already created either way, and
+          // the form doesn't block on or surface failures from this.
+          void notifyGuardian(guardianEmail, displayName);
+        }
       } else {
         await createEmployerProfile(uid, email, {
           businessName,
@@ -214,7 +225,14 @@ export function SignUpForm() {
             value={dateOfBirth}
             onChange={setDateOfBirth}
           />
-          {dateOfBirth && under18 && (
+          {dateOfBirth && underMinimumAge && (
+            <p role="alert" className="-mt-1 rounded-lg bg-gorse-bg px-3 py-2 text-xs text-gorse">
+              You need to be at least {MINIMUM_AGE} to use Tern. Come back
+              once you turn {MINIMUM_AGE} &mdash; we&rsquo;d love to have
+              you then.
+            </p>
+          )}
+          {dateOfBirth && under18 && !underMinimumAge && (
             <>
               <Field
                 label="Parent or guardian email"
@@ -224,8 +242,8 @@ export function SignUpForm() {
                 placeholder="parent@example.je"
               />
               <p className="-mt-1 text-xs text-granite-soft">
-                Since you&rsquo;re under 18, we&rsquo;ll ask your parent or
-                guardian to confirm before you can apply to jobs.
+                Since you&rsquo;re under 18, we&rsquo;ll let your parent or
+                guardian know you&rsquo;ve joined Tern.
               </p>
             </>
           )}
@@ -261,8 +279,8 @@ export function SignUpForm() {
 
       <button
         type="submit"
-        disabled={isPending}
-        className="mt-5 w-full rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer"
+        disabled={isPending || (role === "job_seeker" && underMinimumAge)}
+        className="mt-5 w-full rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >
         {isPending ? "Saving…" : "Create account"}
       </button>

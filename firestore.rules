@@ -17,6 +17,20 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Minimum age enforcement (job seekers only). dateOfBirth is an ISO
+    // date string ("2009-04-12"); parse it into a Timestamp and compare
+    // against 16 years (5844 days) before now. This is the real gate —
+    // the sign-up form's client-side block is UX on top of this, not a
+    // substitute for it. Verified against the Firestore rules emulator
+    // (exact-boundary cases: 16 today allows, 1 day short denies).
+    function meetsMinimumAge(dateOfBirth) {
+      return timestamp.date(
+        int(dateOfBirth.split('-')[0]),
+        int(dateOfBirth.split('-')[1]),
+        int(dateOfBirth.split('-')[2])
+      ) <= request.time - duration.value(5844, 'd');
+    }
+
     // --- Users ---
     // A user can read and create their own profile, and update it, but can
     // never set their own verificationStatus to "approved" themselves.
@@ -26,7 +40,9 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if request.auth != null
         && request.auth.uid == uid
-        && request.resource.data.verificationStatus == "pending";
+        && request.resource.data.verificationStatus == "pending"
+        && (request.resource.data.role != "job_seeker"
+          || meetsMinimumAge(request.resource.data.dateOfBirth));
       allow update: if (request.auth != null
           && request.auth.uid == uid
           && request.resource.data.verificationStatus == resource.data.verificationStatus)
