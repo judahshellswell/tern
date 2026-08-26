@@ -76,8 +76,11 @@ export default function PrivacyPage() {
             <div>
               <h2 className="font-serif text-xl font-semibold">Contact</h2>
               <p className="mt-3 text-granite">
-                Questions about this policy or your data can be sent to
-                the address you received our waitlist confirmation from.
+                Questions about this policy or your data can be sent to{" "}
+                <a href="mailto:hello@tern.je" className="text-tide underline hover:text-tide-bright">
+                  hello@tern.je
+                </a>
+                .
               </p>
             </div>
           </div>
