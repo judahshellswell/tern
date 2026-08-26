@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/page-header";
 
 export const metadata: Metadata = {
   title: "Terms of service — Tern",
-  description: "Terms covering Tern's pre-launch waitlist.",
+  description: "Terms covering accounts, verification, and job postings on Tern.",
 };
 
 export default function TermsPage() {
@@ -16,51 +16,62 @@ export default function TermsPage() {
         <PageHeader
           eyebrow="Legal"
           title="Terms of service"
-          lede="Last updated 31 July 2026. These terms cover our pre-launch waitlist only — full terms for job seekers and employers will be published before Tern opens."
+          lede="Last updated 26 August 2026. We're a small, early platform in Jersey — this describes how Tern actually works today. It isn't a substitute for formal legal advice, and we'll expand it as the platform grows."
         />
 
         <section className="px-6 py-16 sm:py-20">
           <div className="mx-auto max-w-2xl space-y-10 text-[15px] leading-relaxed text-ink">
             <div>
-              <h2 className="font-serif text-xl font-semibold">What joining the waitlist means</h2>
+              <h2 className="font-serif text-xl font-semibold">Who can use Tern</h2>
               <p className="mt-3 text-granite">
-                Joining the Tern waitlist reserves you early access and
-                adds you to our launch mailing list. It doesn&rsquo;t
-                create an account, and it isn&rsquo;t a commitment on
-                either side &mdash; you can ask to be removed at any time,
-                and joining doesn&rsquo;t guarantee access on any
-                particular date.
+                Job seekers must be 16 or older. If you&rsquo;re 16 or 17,
+                a parent or guardian must confirm they know you&rsquo;re
+                using Tern before you can apply to any job. Employers must
+                be a real, verifiable business.
               </p>
             </div>
 
             <div>
-              <h2 className="font-serif text-xl font-semibold">No service is live yet</h2>
+              <h2 className="font-serif text-xl font-semibold">Verification</h2>
               <p className="mt-3 text-granite">
-                Tern&rsquo;s job seeker and employer product hasn&rsquo;t
-                launched. Nothing on this site should be read as an offer
-                of employment, a job listing, or a verified employer or
-                candidate profile &mdash; that functionality doesn&rsquo;t
-                exist yet.
+                Every account is reviewed before it can do anything that
+                affects someone else &mdash; a job seeker can&rsquo;t apply
+                and an employer can&rsquo;t publish a job until Tern
+                approves their account. We can reject or ask for more
+                information at our discretion, and we can suspend an
+                account that misrepresents who they are.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="font-serif text-xl font-semibold">Job postings &amp; applications</h2>
+              <p className="mt-3 text-granite">
+                Employers are responsible for the accuracy of the roles
+                they post. Applying to a job through Tern doesn&rsquo;t
+                guarantee an interview or a job offer &mdash; Tern
+                connects candidates and employers, but the hiring
+                decision is always the employer&rsquo;s.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="font-serif text-xl font-semibold">Acceptable use</h2>
+              <p className="mt-3 text-granite">
+                Don&rsquo;t misrepresent your identity, your age, or your
+                business. Don&rsquo;t use Tern to contact job seekers or
+                employers outside the platform&rsquo;s intended use. We
+                can suspend or remove accounts that put other users at
+                risk.
               </p>
             </div>
 
             <div>
               <h2 className="font-serif text-xl font-semibold">Changes</h2>
               <p className="mt-3 text-granite">
-                We may update these terms as we get closer to launch.
-                We&rsquo;ll post the new version here, and it applies from
-                the date it&rsquo;s published.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="font-serif text-xl font-semibold">Full terms at launch</h2>
-              <p className="mt-3 text-granite">
-                Once job seekers and employers can create real accounts,
-                these terms will be replaced with a complete version
-                covering account use, verification, job postings,
-                applications, and platform rules for both Jersey launch
-                and the territories that follow.
+                Tern is early and these terms will keep evolving as the
+                platform grows &mdash; particularly as we add more
+                territories beyond Jersey. We&rsquo;ll post updates here,
+                and they apply from the date they&rsquo;re published.
               </p>
             </div>
 
