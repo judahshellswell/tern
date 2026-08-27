@@ -6,6 +6,9 @@ import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { logOut } from "@/lib/auth-actions";
 import { useRouter } from "next/navigation";
+import { ReapplyForm } from "@/components/dashboard/reapply-form";
+import type { UserProfile } from "@/lib/types";
+import { useState } from "react";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
@@ -36,6 +39,51 @@ export default function DashboardPage() {
     );
   }
 
+  if (profile.verificationStatus === "banned") {
+    return (
+      <>
+        <SiteHeader />
+        <main className="flex-1 px-6 py-20">
+          <div className="mx-auto max-w-md text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.1em] text-gorse">
+              Account suspended
+            </p>
+            <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight">
+              This account has been suspended.
+            </h1>
+            {profile.rejectionReason && (
+              <p className="mt-4 rounded-2xl border border-border-strong bg-gorse-bg px-5 py-4 text-sm text-ink">
+                &ldquo;{profile.rejectionReason}&rdquo;
+              </p>
+            )}
+            <p className="mt-4 text-sm text-granite">
+              If you believe this is a mistake, contact us and we&rsquo;ll look into it.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <Link
+                href="/contact"
+                className="rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
+              >
+                Contact us
+              </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logOut();
+                  router.push("/");
+                }}
+                className="text-sm text-granite underline hover:text-tide cursor-pointer"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </>
+    );
+  }
+
   return (
     <>
       <SiteHeader />
@@ -48,11 +96,7 @@ export default function DashboardPage() {
             {profile.role === "job_seeker" ? profile.displayName : profile.businessName}
           </h1>
 
-          <VerificationBanner
-            status={profile.verificationStatus}
-            role={profile.role}
-            rejectionReason={profile.rejectionReason}
-          />
+          <VerificationBanner profile={profile} />
 
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
@@ -102,16 +146,11 @@ export default function DashboardPage() {
   );
 }
 
-function VerificationBanner({
-  status,
-  role,
-  rejectionReason,
-}: {
-  status: "pending" | "approved" | "rejected";
-  role: "job_seeker" | "employer";
-  rejectionReason?: string;
-}) {
-  if (status === "approved") {
+function VerificationBanner({ profile }: { profile: UserProfile }) {
+  const [reapplying, setReapplying] = useState(false);
+  const [justResubmitted, setJustResubmitted] = useState(false);
+
+  if (profile.verificationStatus === "approved") {
     return (
       <div className="mt-6 flex items-center gap-2 rounded-full bg-tide/10 px-4 py-2 text-sm font-medium text-tide w-fit">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -128,23 +167,45 @@ function VerificationBanner({
     );
   }
 
-  if (status === "rejected") {
+  if (profile.verificationStatus === "rejected") {
+    if (justResubmitted) {
+      return (
+        <div className="mt-6 rounded-2xl border border-border-strong bg-tide/10 px-5 py-4 text-sm text-tide">
+          <p className="font-semibold">Resubmitted for review.</p>
+          <p className="mt-1 text-ink">We&rsquo;ll be in touch once we&rsquo;ve had a look.</p>
+        </div>
+      );
+    }
+
     return (
       <div className="mt-6 rounded-2xl border border-border-strong bg-gorse-bg px-5 py-4 text-sm text-ink">
         <p className="font-semibold text-gorse">Verification not approved</p>
-        {rejectionReason ? (
-          <p className="mt-1 text-ink">&ldquo;{rejectionReason}&rdquo;</p>
+        {profile.rejectionReason ? (
+          <p className="mt-1 text-ink">&ldquo;{profile.rejectionReason}&rdquo;</p>
         ) : (
           <p className="mt-1 text-granite">
             Get in touch with us and we&rsquo;ll help sort this out.
           </p>
         )}
-        <Link
-          href="/contact"
-          className="mt-2 inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
-        >
-          Contact us
-        </Link>
+        {reapplying ? (
+          <ReapplyForm profile={profile} onDone={() => setJustResubmitted(true)} />
+        ) : (
+          <div className="mt-3 flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setReapplying(true)}
+              className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
+            >
+              Update &amp; resubmit
+            </button>
+            <Link
+              href="/contact"
+              className="text-sm font-medium text-tide underline hover:text-tide-bright"
+            >
+              Contact us
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -153,7 +214,7 @@ function VerificationBanner({
     <div className="mt-6 rounded-2xl border border-border-strong bg-gorse-bg px-5 py-4 text-sm text-ink">
       <p className="font-semibold text-gorse">Verification pending</p>
       <p className="mt-1 text-granite">
-        {role === "job_seeker"
+        {profile.role === "job_seeker"
           ? "We're reviewing your details — you'll be able to apply to jobs once you're verified."
           : "We're reviewing your business — you'll be able to post jobs once you're verified."}
       </p>

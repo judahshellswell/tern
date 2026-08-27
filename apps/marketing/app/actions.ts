@@ -4,6 +4,7 @@ import { addToWaitlist, type WaitlistRole } from "@/lib/waitlist";
 import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 import { sendRejectionNotification } from "@/lib/rejection-notification";
+import { sendBanNotification } from "@/lib/ban-notification";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -82,6 +83,17 @@ export async function notifyRejection(userEmail: string, name: string, reason: s
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send rejection notification:", err);
+    return { ok: false } as const;
+  }
+}
+
+// Same best-effort contract as notifyRejection.
+export async function notifyBan(userEmail: string, name: string, reason: string) {
+  try {
+    await sendBanNotification({ userEmail, name, reason });
+    return { ok: true } as const;
+  } catch (err) {
+    console.error("Failed to send ban notification:", err);
     return { ok: false } as const;
   }
 }

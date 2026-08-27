@@ -9,7 +9,7 @@ import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { isAdminEmail } from "@/lib/admin";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { UserProfile } from "@/lib/types";
-import { notifyRejection } from "@/app/actions";
+import { notifyRejection, notifyBan } from "@/app/actions";
 
 export function AdminVerificationQueue() {
   const { user, loading: authLoading } = useAuth();
@@ -34,9 +34,11 @@ export function AdminVerificationQueue() {
   return <Queue />;
 }
 
+type Action = { uid: string; kind: "reject" | "ban" };
+
 function Queue() {
   const [pending, setPending] = useState<UserProfile[] | null>(null);
-  const [rejectingUid, setRejectingUid] = useState<string | null>(null);
+  const [activeAction, setActiveAction] = useState<Action | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -49,6 +51,10 @@ function Queue() {
     return unsubscribe;
   }, []);
 
+  function profileName(profile: UserProfile) {
+    return profile.role === "job_seeker" ? profile.displayName : profile.businessName;
+  }
+
   async function approve(uid: string) {
     const userRef = doc(getClientFirestore(), "users", uid);
     await updateDoc(userRef, { verificationStatus: "approved" });
@@ -57,9 +63,15 @@ function Queue() {
   async function reject(profile: UserProfile, reason: string) {
     const userRef = doc(getClientFirestore(), "users", profile.uid);
     await updateDoc(userRef, { verificationStatus: "rejected", rejectionReason: reason });
-    const name = profile.role === "job_seeker" ? profile.displayName : profile.businessName;
-    void notifyRejection(profile.email, name, reason);
-    setRejectingUid(null);
+    void notifyRejection(profile.email, profileName(profile), reason);
+    setActiveAction(null);
+  }
+
+  async function ban(profile: UserProfile, reason: string) {
+    const userRef = doc(getClientFirestore(), "users", profile.uid);
+    await updateDoc(userRef, { verificationStatus: "banned", rejectionReason: reason });
+    void notifyBan(profile.email, profileName(profile), reason);
+    setActiveAction(null);
   }
 
   if (pending === null) {
@@ -121,10 +133,13 @@ function Queue() {
             <IdDocumentPreview path={profile.idDocumentPath} />
           )}
 
-          {rejectingUid === profile.uid ? (
-            <RejectionForm
-              onCancel={() => setRejectingUid(null)}
-              onConfirm={(reason) => reject(profile, reason)}
+          {activeAction?.uid === profile.uid ? (
+            <ReasonForm
+              kind={activeAction.kind}
+              onCancel={() => setActiveAction(null)}
+              onConfirm={(reason) =>
+                activeAction.kind === "reject" ? reject(profile, reason) : ban(profile, reason)
+              }
             />
           ) : (
             <div className="mt-4 flex gap-2">
@@ -137,10 +152,17 @@ function Queue() {
               </button>
               <button
                 type="button"
-                onClick={() => setRejectingUid(profile.uid)}
+                onClick={() => setActiveAction({ uid: profile.uid, kind: "reject" })}
                 className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-gorse hover:text-gorse cursor-pointer"
               >
                 Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveAction({ uid: profile.uid, kind: "ban" })}
+                className="ml-auto rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 cursor-pointer"
+              >
+                Ban
               </button>
             </div>
           )}
@@ -200,28 +222,48 @@ function IdDocumentPreview({ path }: { path: string }) {
   );
 }
 
-function RejectionForm({
+const REASON_FORM_COPY = {
+  reject: {
+    label:
+      "Why are you rejecting this? They'll see this message and it'll be emailed to them. They can update their details and resubmit.",
+    placeholder:
+      "e.g. The ID you uploaded doesn't match the name on your profile — please resubmit with a clear photo.",
+    confirmLabel: "Confirm rejection",
+    submittingLabel: "Rejecting…",
+  },
+  ban: {
+    label:
+      "Why are you banning this account? They'll see this message and it'll be emailed to them. Banned accounts can never resubmit.",
+    placeholder: "e.g. The uploaded ID appears to be fabricated.",
+    confirmLabel: "Confirm ban",
+    submittingLabel: "Banning…",
+  },
+} as const;
+
+function ReasonForm({
+  kind,
   onCancel,
   onConfirm,
 }: {
+  kind: "reject" | "ban";
   onCancel: () => void;
   onConfirm: (reason: string) => void;
 }) {
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const copy = REASON_FORM_COPY[kind];
 
   return (
     <div className="mt-4 rounded-xl border border-border-strong bg-paper p-4">
-      <label htmlFor="reject-reason" className="mb-1.5 block text-xs font-medium text-granite">
-        Why are you rejecting this? They&rsquo;ll see this message and it&rsquo;ll be
-        emailed to them.
+      <label htmlFor="reason-input" className="mb-1.5 block text-xs font-medium text-granite">
+        {copy.label}
       </label>
       <textarea
-        id="reject-reason"
+        id="reason-input"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         rows={3}
-        placeholder="e.g. The ID you uploaded doesn't match the name on your profile — please resubmit with a clear photo."
+        placeholder={copy.placeholder}
         className="w-full rounded-lg border border-border-strong bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
       />
       <div className="mt-3 flex gap-2">
@@ -234,7 +276,7 @@ function RejectionForm({
           }}
           className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >
-          {isSubmitting ? "Rejecting…" : "Confirm rejection"}
+          {isSubmitting ? copy.submittingLabel : copy.confirmLabel}
         </button>
         <button
           type="button"

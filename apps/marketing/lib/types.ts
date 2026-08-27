@@ -1,6 +1,6 @@
 export type UserRole = "job_seeker" | "employer";
 
-export type VerificationStatus = "pending" | "approved" | "rejected";
+export type VerificationStatus = "pending" | "approved" | "rejected" | "banned";
 
 export type JobSeekerProfile = {
   role: "job_seeker";
@@ -12,7 +12,7 @@ export type JobSeekerProfile = {
   location: string;
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
-  rejectionReason?: string; // set by admin when verificationStatus is "rejected"
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
   createdAt: string;
 };
 
@@ -25,7 +25,7 @@ export type EmployerProfile = {
   location: string;
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
-  rejectionReason?: string; // set by admin when verificationStatus is "rejected"
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
   createdAt: string;
 };
 

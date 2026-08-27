@@ -32,9 +32,12 @@ service cloud.firestore {
     }
 
     // --- Users ---
-    // A user can read and create their own profile, and update it, but can
-    // never set their own verificationStatus to "approved" themselves.
-    // The admin can read any profile and update verificationStatus only.
+    // A user can read and create their own profile. They can update their
+    // own details while pending or rejected (edit-and-resubmit resets
+    // verificationStatus to "pending" and clears rejectionReason), but can
+    // never set their own status to "approved" or "banned", and can never
+    // touch their document at all once banned. The admin can read any
+    // profile and update verificationStatus + rejectionReason only.
     match /users/{uid} {
       allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow list: if isAdmin();
@@ -47,8 +50,14 @@ service cloud.firestore {
             && request.resource.data.idDocumentPath.size() > 0));
       allow update: if (request.auth != null
           && request.auth.uid == uid
-          && request.resource.data.verificationStatus == resource.data.verificationStatus
-          && request.resource.data.get("rejectionReason", "") == resource.data.get("rejectionReason", ""))
+          && resource.data.verificationStatus != "banned"
+          && resource.data.verificationStatus != "approved"
+          && request.resource.data.verificationStatus == "pending"
+          && !("rejectionReason" in request.resource.data)
+          && (request.resource.data.role != "job_seeker"
+            || (meetsMinimumAge(request.resource.data.dateOfBirth)
+              && request.resource.data.idDocumentPath is string
+              && request.resource.data.idDocumentPath.size() > 0)))
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["verificationStatus", "rejectionReason"]));
@@ -76,18 +85,26 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.employerId
         && isApprovedEmployer(request.auth.uid);
-      allow update, delete: if request.auth != null
-        && request.auth.uid == resource.data.employerId;
+      allow update, delete: if (request.auth != null && request.auth.uid == resource.data.employerId)
+        || isAdmin();
+    }
+
+    function isBanned(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid))
+        && get(/databases/$(database)/documents/users/$(uid)).data.verificationStatus == "banned";
     }
 
     // --- Applications ---
     // An approved job seeker can create an application for themself. The
-    // applicant and the job's owning employer can both read it; only the
-    // employer can update its status.
+    // applicant can always read their own; the employer can read it only
+    // if the applicant isn't currently banned (a live check, so a ban
+    // hides past applications immediately rather than just blocking new
+    // ones). Only the employer can update its status.
     match /applications/{applicationId} {
       allow read: if request.auth != null
-        && (request.auth.uid == resource.data.applicantId
-          || request.auth.uid == resource.data.employerId);
+        && ((request.auth.uid == resource.data.applicantId)
+          || (request.auth.uid == resource.data.employerId
+            && !isBanned(resource.data.applicantId)));
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.applicantId
         && isApprovedJobSeeker(request.auth.uid);
