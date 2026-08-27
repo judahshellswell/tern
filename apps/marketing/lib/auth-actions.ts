@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
@@ -27,6 +28,10 @@ export function signInWithGoogle(): Promise<UserCredential> {
 
 export function logOut(): Promise<void> {
   return signOut(getClientAuth());
+}
+
+export function resetPassword(email: string): Promise<void> {
+  return sendPasswordResetEmail(getClientAuth(), email);
 }
 
 const ERROR_MESSAGES: Record<string, string> = {

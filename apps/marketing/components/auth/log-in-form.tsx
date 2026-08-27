@@ -81,6 +81,12 @@ export function LogInForm() {
           onChange={(e) => setPassword(e.target.value)}
           className="rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
         />
+        <Link
+          href="/forgot-password"
+          className="-mt-1 self-end text-xs font-medium text-tide underline hover:text-tide-bright"
+        >
+          Forgot password?
+        </Link>
         <button
           type="submit"
           disabled={isPending}
