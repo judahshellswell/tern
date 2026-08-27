@@ -1,9 +1,11 @@
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  type User,
   type UserCredential,
 } from "firebase/auth";
 import { getClientAuth, googleAuthProvider } from "./firebase-client";
@@ -32,6 +34,14 @@ export function logOut(): Promise<void> {
 
 export function resetPassword(email: string): Promise<void> {
   return sendPasswordResetEmail(getClientAuth(), email);
+}
+
+// Confirms the address is real and can receive mail — purely informational
+// (shown to the admin in /admin), never gates signup, applying, or posting.
+// Google accounts are always already verified by Google, so this only
+// matters for the email/password path.
+export function sendVerificationEmail(user: User): Promise<void> {
+  return sendEmailVerification(user);
 }
 
 const ERROR_MESSAGES: Record<string, string> = {

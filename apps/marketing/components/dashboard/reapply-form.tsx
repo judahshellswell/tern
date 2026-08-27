@@ -5,6 +5,7 @@ import { isUnder18, isUnderMinimumAge, MINIMUM_AGE, type UserProfile } from "@/l
 import { createJobSeekerProfile, createEmployerProfile } from "@/lib/profile";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { notifyAdminOfSignup } from "@/app/actions";
+import { useAuth } from "@/components/auth/auth-provider";
 
 export function ReapplyForm({
   profile,
@@ -13,6 +14,7 @@ export function ReapplyForm({
   profile: UserProfile;
   onDone: () => void;
 }) {
+  const { user } = useAuth();
   const [displayName, setDisplayName] = useState(
     profile.role === "job_seeker" ? profile.displayName : "",
   );
@@ -50,22 +52,33 @@ export function ReapplyForm({
     setError("");
     setIsPending(true);
     try {
+      const emailVerified = user?.emailVerified ?? profile.emailVerified ?? false;
       if (profile.role === "job_seeker" && idFile) {
         const idDocumentPath = await uploadIdDocument(profile.uid, idFile);
-        await createJobSeekerProfile(profile.uid, profile.email, {
-          displayName,
-          dateOfBirth,
-          guardianEmail,
-          location,
-          idDocumentPath,
-        });
+        await createJobSeekerProfile(
+          profile.uid,
+          profile.email,
+          {
+            displayName,
+            dateOfBirth,
+            guardianEmail,
+            location,
+            idDocumentPath,
+          },
+          emailVerified,
+        );
         void notifyAdminOfSignup("job_seeker", displayName, profile.email);
       } else {
-        await createEmployerProfile(profile.uid, profile.email, {
-          businessName,
-          registrationNumber,
-          location,
-        });
+        await createEmployerProfile(
+          profile.uid,
+          profile.email,
+          {
+            businessName,
+            registrationNumber,
+            location,
+          },
+          emailVerified,
+        );
         void notifyAdminOfSignup("employer", businessName, profile.email);
       }
       onDone();

@@ -101,7 +101,18 @@ function Queue() {
               <p className="font-serif text-lg font-semibold">
                 {profile.role === "job_seeker" ? profile.displayName : profile.businessName}
               </p>
-              <p className="text-sm text-granite">{profile.email}</p>
+              <p className="flex items-center gap-1.5 text-sm text-granite">
+                {profile.email}
+                {profile.emailVerified ? (
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-tide">
+                    &middot; email verified
+                  </span>
+                ) : (
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-granite-soft">
+                    &middot; email unverified
+                  </span>
+                )}
+              </p>
             </div>
           </div>
 

@@ -13,6 +13,11 @@ export type JobSeekerProfile = {
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
+  // Informational only — never gates anything. True immediately for Google
+  // sign-in (Google already verifies); for email/password, set once the
+  // user's own browser confirms Auth's emailVerified after they click the
+  // link Firebase sends at signup.
+  emailVerified?: boolean;
   createdAt: string;
 };
 
@@ -26,6 +31,7 @@ export type EmployerProfile = {
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
+  emailVerified?: boolean;
   createdAt: string;
 };
 

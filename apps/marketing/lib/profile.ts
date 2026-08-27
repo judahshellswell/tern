@@ -20,6 +20,7 @@ export async function createJobSeekerProfile(
   uid: string,
   email: string,
   details: JobSeekerSignupDetails,
+  emailVerified: boolean,
 ): Promise<void> {
   const under18 = isUnder18(details.dateOfBirth);
   const ref = doc(getClientFirestore(), "users", uid);
@@ -33,6 +34,7 @@ export async function createJobSeekerProfile(
     location: details.location,
     idDocumentPath: details.idDocumentPath,
     verificationStatus: "pending",
+    emailVerified,
     createdAt: serverTimestamp(),
   });
 }
@@ -41,6 +43,7 @@ export async function createEmployerProfile(
   uid: string,
   email: string,
   details: EmployerSignupDetails,
+  emailVerified: boolean,
 ): Promise<void> {
   const ref = doc(getClientFirestore(), "users", uid);
   await setDoc(ref, {
@@ -52,6 +55,7 @@ export async function createEmployerProfile(
     location: details.location,
     isFreeEmailDomain: isFreeEmailDomain(email),
     verificationStatus: "pending",
+    emailVerified,
     createdAt: serverTimestamp(),
   });
 }

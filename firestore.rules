@@ -58,6 +58,11 @@ service cloud.firestore {
             || (meetsMinimumAge(request.resource.data.dateOfBirth)
               && request.resource.data.idDocumentPath is string
               && request.resource.data.idDocumentPath.size() > 0)))
+        || (request.auth != null
+          && request.auth.uid == uid
+          && resource.data.verificationStatus != "banned"
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["emailVerified"])
+          && request.resource.data.emailVerified == true)
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["verificationStatus", "rejectionReason"]));

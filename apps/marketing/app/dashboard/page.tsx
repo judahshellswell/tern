@@ -8,11 +8,24 @@ import { logOut } from "@/lib/auth-actions";
 import { useRouter } from "next/navigation";
 import { ReapplyForm } from "@/components/dashboard/reapply-form";
 import type { UserProfile } from "@/lib/types";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { getClientFirestore } from "@/lib/firebase-client";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+
+  // Self-report: if this browser's own Auth session now shows the email
+  // as verified (they clicked the link) but the stored profile doesn't
+  // reflect it yet, write it once. Purely informational for the admin —
+  // never gates anything, so this is fire-and-forget.
+  useEffect(() => {
+    if (!user || !profile) return;
+    if (user.emailVerified && !profile.emailVerified && profile.verificationStatus !== "banned") {
+      void updateDoc(doc(getClientFirestore(), "users", user.uid), { emailVerified: true });
+    }
+  }, [user, profile]);
 
   if (loading) {
     return (

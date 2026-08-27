@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { UserRole } from "@/lib/types";
 import { isUnder18, isUnderMinimumAge, MINIMUM_AGE } from "@/lib/types";
-import { signUpWithEmail, signInWithGoogle, authErrorMessage } from "@/lib/auth-actions";
+import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEmail } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
@@ -18,6 +18,7 @@ export function SignUpForm() {
   const [role, setRole] = useState<UserRole | null>(null);
   const [uid, setUid] = useState<string | null>(null);
   const [email, setEmail] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
@@ -51,6 +52,7 @@ export function SignUpForm() {
       }
       setUid(credential.user.uid);
       setEmail(credential.user.email ?? "");
+      setEmailVerified(credential.user.emailVerified);
       setStep("details");
     } catch (err) {
       setError(authErrorMessage(err));
@@ -66,6 +68,9 @@ export function SignUpForm() {
     try {
       const credential = await signUpWithEmail(email, password);
       setUid(credential.user.uid);
+      setEmailVerified(credential.user.emailVerified);
+      // Best-effort — never blocks or delays moving to the next step.
+      void sendVerificationEmail(credential.user);
       setStep("details");
     } catch (err) {
       setError(authErrorMessage(err));
@@ -90,13 +95,18 @@ export function SignUpForm() {
     try {
       if (role === "job_seeker" && idFile) {
         const idDocumentPath = await uploadIdDocument(uid, idFile);
-        await createJobSeekerProfile(uid, email, {
-          displayName,
-          dateOfBirth,
-          guardianEmail,
-          location,
-          idDocumentPath,
-        });
+        await createJobSeekerProfile(
+          uid,
+          email,
+          {
+            displayName,
+            dateOfBirth,
+            guardianEmail,
+            location,
+            idDocumentPath,
+          },
+          emailVerified,
+        );
         if (under18 && guardianEmail) {
           // Best-effort — the account is already created either way, and
           // the form doesn't block on or surface failures from this.
@@ -104,11 +114,16 @@ export function SignUpForm() {
         }
         void notifyAdminOfSignup("job_seeker", displayName, email);
       } else {
-        await createEmployerProfile(uid, email, {
-          businessName,
-          registrationNumber,
-          location,
-        });
+        await createEmployerProfile(
+          uid,
+          email,
+          {
+            businessName,
+            registrationNumber,
+            location,
+          },
+          emailVerified,
+        );
         void notifyAdminOfSignup("employer", businessName, email);
       }
       router.push("/dashboard");
