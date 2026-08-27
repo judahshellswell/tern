@@ -1,6 +1,7 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -23,6 +24,7 @@ function getClientApp(): FirebaseApp {
 
 let auth: Auth | null = null;
 let firestore: Firestore | null = null;
+let storage: FirebaseStorage | null = null;
 
 // Firebase throws synchronously if the config is missing/malformed (e.g. an
 // env var didn't make it into this build). A page that doesn't even use auth
@@ -42,6 +44,14 @@ export function getClientFirestore(): Firestore {
   }
   if (!firestore) firestore = getFirestore(getClientApp());
   return firestore;
+}
+
+export function getClientStorage(): FirebaseStorage {
+  if (!isFirebaseConfigured()) {
+    throw new Error("Firebase client config is missing — check NEXT_PUBLIC_FIREBASE_* env vars.");
+  }
+  if (!storage) storage = getStorage(getClientApp());
+  return storage;
 }
 
 export const googleAuthProvider = new GoogleAuthProvider();

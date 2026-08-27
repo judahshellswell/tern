@@ -1,12 +1,13 @@
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { getClientFirestore } from "./firebase-client";
-import { isUnder18, type UserProfile } from "./types";
+import { isFreeEmailDomain, isUnder18, type UserProfile } from "./types";
 
 export type JobSeekerSignupDetails = {
   displayName: string;
   dateOfBirth: string;
   guardianEmail: string;
   location: string;
+  idDocumentPath: string;
 };
 
 export type EmployerSignupDetails = {
@@ -30,6 +31,7 @@ export async function createJobSeekerProfile(
     dateOfBirth: details.dateOfBirth,
     guardianEmail: under18 ? details.guardianEmail : null,
     location: details.location,
+    idDocumentPath: details.idDocumentPath,
     verificationStatus: "pending",
     createdAt: serverTimestamp(),
   });
@@ -48,6 +50,7 @@ export async function createEmployerProfile(
     businessName: details.businessName,
     registrationNumber: details.registrationNumber,
     location: details.location,
+    isFreeEmailDomain: isFreeEmailDomain(email),
     verificationStatus: "pending",
     createdAt: serverTimestamp(),
   });

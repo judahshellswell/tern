@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
-import { getClientFirestore } from "@/lib/firebase-client";
+import { ref, getDownloadURL } from "firebase/storage";
+import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { isAdminEmail } from "@/lib/admin";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { UserProfile } from "@/lib/types";
@@ -98,6 +100,17 @@ function Queue() {
             )}
           </dl>
 
+          {profile.role === "employer" && profile.isFreeEmailDomain && (
+            <p className="mt-3 rounded-lg bg-gorse-bg px-3 py-2 text-xs text-gorse">
+              Signed up with a personal email address (not a business
+              domain) &mdash; worth extra scrutiny before approving.
+            </p>
+          )}
+
+          {profile.role === "job_seeker" && profile.idDocumentPath && (
+            <IdDocumentPreview path={profile.idDocumentPath} />
+          )}
+
           <div className="mt-4 flex gap-2">
             <button
               type="button"
@@ -116,6 +129,56 @@ function Queue() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function IdDocumentPreview({ path }: { path: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const isPdf = path.toLowerCase().endsWith(".pdf");
+
+  useEffect(() => {
+    let cancelled = false;
+    getDownloadURL(ref(getClientStorage(), path))
+      .then((downloadUrl) => {
+        if (!cancelled) setUrl(downloadUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  return (
+    <div className="mt-3">
+      <p className="mb-1.5 text-xs text-granite-soft">Photo ID</p>
+      {failed && <p className="text-xs text-gorse">Couldn&rsquo;t load the ID document.</p>}
+      {!failed && !url && <p className="text-xs text-granite-soft">Loading…</p>}
+      {url && isPdf && (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
+        >
+          View uploaded PDF
+        </a>
+      )}
+      {url && !isPdf && (
+        <a href={url} target="_blank" rel="noopener noreferrer">
+          <Image
+            src={url}
+            alt="Uploaded ID document"
+            width={240}
+            height={160}
+            unoptimized
+            className="rounded-lg border border-border-strong object-cover"
+          />
+        </a>
+      )}
     </div>
   );
 }

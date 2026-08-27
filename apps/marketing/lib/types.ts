@@ -10,6 +10,7 @@ export type JobSeekerProfile = {
   dateOfBirth: string; // ISO date, e.g. "2009-04-12"
   guardianEmail: string | null; // required if under 18 at signup
   location: string;
+  idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
   createdAt: string;
 };
@@ -21,6 +22,7 @@ export type EmployerProfile = {
   businessName: string;
   registrationNumber: string;
   location: string;
+  isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
   createdAt: string;
 };
@@ -93,4 +95,28 @@ export const MINIMUM_AGE = 16;
 
 export function isUnderMinimumAge(dateOfBirth: string): boolean {
   return isUnderAge(dateOfBirth, MINIMUM_AGE);
+}
+
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "yahoo.com",
+  "yahoo.co.uk",
+  "outlook.com",
+  "hotmail.com",
+  "hotmail.co.uk",
+  "live.com",
+  "live.co.uk",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "protonmail.com",
+  "proton.me",
+  "mail.com",
+  "gmx.com",
+  "gmx.co.uk",
+]);
+
+export function isFreeEmailDomain(email: string): boolean {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  return !!domain && FREE_EMAIL_DOMAINS.has(domain);
 }

@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Single hardcoded admin for v1 — matches lib/admin.ts ADMIN_EMAILS
+    // and the same function in firestore.rules. Revisit with a real
+    // role/claim system before adding more admins.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "jjrshellswell@gmail.com";
+    }
+
+    // Job seeker identity documents. Owner can upload once at signup.
+    // Only the owner (briefly, to confirm their own upload succeeded)
+    // and the admin can read — never any other user. This mirrors the
+    // Firestore verificationSubmissions design: evidence is write-once
+    // and tightly scoped, never a general-purpose file store.
+    match /verification-ids/{uid}/{fileName} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf');
+      allow delete: if false;
+    }
+
+    // Default-deny everything else.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

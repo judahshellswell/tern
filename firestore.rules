@@ -42,7 +42,9 @@ service cloud.firestore {
         && request.auth.uid == uid
         && request.resource.data.verificationStatus == "pending"
         && (request.resource.data.role != "job_seeker"
-          || meetsMinimumAge(request.resource.data.dateOfBirth));
+          || (meetsMinimumAge(request.resource.data.dateOfBirth)
+            && request.resource.data.idDocumentPath is string
+            && request.resource.data.idDocumentPath.size() > 0));
       allow update: if (request.auth != null
           && request.auth.uid == uid
           && request.resource.data.verificationStatus == resource.data.verificationStatus)

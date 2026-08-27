@@ -8,6 +8,7 @@ import { isUnder18, isUnderMinimumAge, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
+import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 
 type Step = "role" | "account" | "details";
 
@@ -27,6 +28,8 @@ export function SignUpForm() {
   const [location, setLocation] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
+  const [idFile, setIdFile] = useState<File | null>(null);
+  const [idFileError, setIdFileError] = useState("");
 
   const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
   const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
@@ -78,15 +81,21 @@ export function SignUpForm() {
       setError(`You need to be at least ${MINIMUM_AGE} to use Tern.`);
       return;
     }
+    if (role === "job_seeker" && !idFile) {
+      setError("Please upload a photo ID to continue.");
+      return;
+    }
     setError("");
     setIsPending(true);
     try {
-      if (role === "job_seeker") {
+      if (role === "job_seeker" && idFile) {
+        const idDocumentPath = await uploadIdDocument(uid, idFile);
         await createJobSeekerProfile(uid, email, {
           displayName,
           dateOfBirth,
           guardianEmail,
           location,
+          idDocumentPath,
         });
         if (under18 && guardianEmail) {
           // Best-effort — the account is already created either way, and
@@ -255,6 +264,38 @@ export function SignUpForm() {
             onChange={setLocation}
             placeholder="St Helier, Jersey"
           />
+          <div>
+            <label htmlFor="id-upload" className="mb-1.5 block text-xs font-medium text-granite">
+              Photo ID
+            </label>
+            <input
+              id="id-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (file) {
+                  const validationError = validateIdDocument(file);
+                  setIdFileError(validationError ?? "");
+                  setIdFile(validationError ? null : file);
+                } else {
+                  setIdFile(null);
+                  setIdFileError("");
+                }
+              }}
+              className="block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
+            />
+            <p className="mt-1.5 text-xs text-granite-soft">
+              A passport, driving licence, or school/college ID &mdash;
+              used only to confirm the details above and never shown to
+              employers.
+            </p>
+            {idFileError && (
+              <p role="alert" className="mt-1.5 text-xs text-gorse">
+                {idFileError}
+              </p>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -281,7 +322,10 @@ export function SignUpForm() {
 
       <button
         type="submit"
-        disabled={isPending || (role === "job_seeker" && underMinimumAge)}
+        disabled={
+          isPending ||
+          (role === "job_seeker" && (underMinimumAge || !idFile))
+        }
         className="mt-5 w-full rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >
         {isPending ? "Saving…" : "Create account"}
