@@ -8,7 +8,7 @@ service firebase.storage {
     // role/claim system before adding more admins.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "jjrshellswell@gmail.com";
+        && request.auth.token.email == "info@judapps.co.uk";
     }
 
     // Job seeker identity documents. Owner can upload once at signup.

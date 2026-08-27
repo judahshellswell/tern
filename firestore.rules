@@ -7,7 +7,7 @@ service cloud.firestore {
     // Revisit with a real role/claim system before adding more admins.
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email == "jjrshellswell@gmail.com";
+        && request.auth.token.email == "info@judapps.co.uk";
     }
 
     // Waitlist signups are written only by the Admin SDK (server actions),
