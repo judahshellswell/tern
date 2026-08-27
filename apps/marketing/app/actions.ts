@@ -2,6 +2,7 @@
 
 import { addToWaitlist, type WaitlistRole } from "@/lib/waitlist";
 import { sendGuardianNotification } from "@/lib/guardian-notification";
+import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -49,6 +50,23 @@ export async function notifyGuardian(guardianEmail: string, jobSeekerName: strin
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send guardian notification:", err);
+    return { ok: false } as const;
+  }
+}
+
+// Called right after any job seeker or employer profile is created, so the
+// admin doesn't have to poll /admin to know something is waiting. Same
+// best-effort contract as notifyGuardian — never blocks account creation.
+export async function notifyAdminOfSignup(
+  role: "job_seeker" | "employer",
+  name: string,
+  email: string,
+) {
+  try {
+    await notifyAdminOfPendingVerification({ role, name, email });
+    return { ok: true } as const;
+  } catch (err) {
+    console.error("Failed to send admin verification notification:", err);
     return { ok: false } as const;
   }
 }

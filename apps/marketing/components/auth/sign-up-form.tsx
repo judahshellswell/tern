@@ -7,7 +7,7 @@ import type { UserRole } from "@/lib/types";
 import { isUnder18, isUnderMinimumAge, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
-import { notifyGuardian } from "@/app/actions";
+import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
 
 type Step = "role" | "account" | "details";
 
@@ -93,12 +93,14 @@ export function SignUpForm() {
           // the form doesn't block on or surface failures from this.
           void notifyGuardian(guardianEmail, displayName);
         }
+        void notifyAdminOfSignup("job_seeker", displayName, email);
       } else {
         await createEmployerProfile(uid, email, {
           businessName,
           registrationNumber,
           location,
         });
+        void notifyAdminOfSignup("employer", businessName, email);
       }
       router.push("/dashboard");
     } catch {
