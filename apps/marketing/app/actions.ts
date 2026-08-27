@@ -3,6 +3,7 @@
 import { addToWaitlist, type WaitlistRole } from "@/lib/waitlist";
 import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
+import { sendRejectionNotification } from "@/lib/rejection-notification";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -67,6 +68,20 @@ export async function notifyAdminOfSignup(
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send admin verification notification:", err);
+    return { ok: false } as const;
+  }
+}
+
+// Called right after the admin rejects a job seeker or employer with a
+// reason. Same best-effort contract — the rejection itself is already
+// written to Firestore by the time this runs, so a failed send shouldn't
+// be surfaced as if the rejection failed.
+export async function notifyRejection(userEmail: string, name: string, reason: string) {
+  try {
+    await sendRejectionNotification({ userEmail, name, reason });
+    return { ok: true } as const;
+  } catch (err) {
+    console.error("Failed to send rejection notification:", err);
     return { ok: false } as const;
   }
 }

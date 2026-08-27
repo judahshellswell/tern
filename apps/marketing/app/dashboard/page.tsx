@@ -48,7 +48,11 @@ export default function DashboardPage() {
             {profile.role === "job_seeker" ? profile.displayName : profile.businessName}
           </h1>
 
-          <VerificationBanner status={profile.verificationStatus} role={profile.role} />
+          <VerificationBanner
+            status={profile.verificationStatus}
+            role={profile.role}
+            rejectionReason={profile.rejectionReason}
+          />
 
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
@@ -101,9 +105,11 @@ export default function DashboardPage() {
 function VerificationBanner({
   status,
   role,
+  rejectionReason,
 }: {
   status: "pending" | "approved" | "rejected";
   role: "job_seeker" | "employer";
+  rejectionReason?: string;
 }) {
   if (status === "approved") {
     return (
@@ -126,9 +132,19 @@ function VerificationBanner({
     return (
       <div className="mt-6 rounded-2xl border border-border-strong bg-gorse-bg px-5 py-4 text-sm text-ink">
         <p className="font-semibold text-gorse">Verification not approved</p>
-        <p className="mt-1 text-granite">
-          Get in touch with us and we&rsquo;ll help sort this out.
-        </p>
+        {rejectionReason ? (
+          <p className="mt-1 text-ink">&ldquo;{rejectionReason}&rdquo;</p>
+        ) : (
+          <p className="mt-1 text-granite">
+            Get in touch with us and we&rsquo;ll help sort this out.
+          </p>
+        )}
+        <Link
+          href="/contact"
+          className="mt-2 inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
+        >
+          Contact us
+        </Link>
       </div>
     );
   }

@@ -12,6 +12,7 @@ export type JobSeekerProfile = {
   location: string;
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected"
   createdAt: string;
 };
 
@@ -24,6 +25,7 @@ export type EmployerProfile = {
   location: string;
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected"
   createdAt: string;
 };
 

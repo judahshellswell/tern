@@ -47,9 +47,11 @@ service cloud.firestore {
             && request.resource.data.idDocumentPath.size() > 0));
       allow update: if (request.auth != null
           && request.auth.uid == uid
-          && request.resource.data.verificationStatus == resource.data.verificationStatus)
+          && request.resource.data.verificationStatus == resource.data.verificationStatus
+          && request.resource.data.get("rejectionReason", "") == resource.data.get("rejectionReason", ""))
         || (isAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["verificationStatus"]));
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["verificationStatus", "rejectionReason"]));
       allow delete: if false;
     }
 

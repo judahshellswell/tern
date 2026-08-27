@@ -9,6 +9,7 @@ import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { isAdminEmail } from "@/lib/admin";
 import { useAuth } from "@/components/auth/auth-provider";
 import type { UserProfile } from "@/lib/types";
+import { notifyRejection } from "@/app/actions";
 
 export function AdminVerificationQueue() {
   const { user, loading: authLoading } = useAuth();
@@ -35,6 +36,7 @@ export function AdminVerificationQueue() {
 
 function Queue() {
   const [pending, setPending] = useState<UserProfile[] | null>(null);
+  const [rejectingUid, setRejectingUid] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
@@ -47,9 +49,17 @@ function Queue() {
     return unsubscribe;
   }, []);
 
-  async function decide(uid: string, decision: "approved" | "rejected") {
-    const ref = doc(getClientFirestore(), "users", uid);
-    await updateDoc(ref, { verificationStatus: decision });
+  async function approve(uid: string) {
+    const userRef = doc(getClientFirestore(), "users", uid);
+    await updateDoc(userRef, { verificationStatus: "approved" });
+  }
+
+  async function reject(profile: UserProfile, reason: string) {
+    const userRef = doc(getClientFirestore(), "users", profile.uid);
+    await updateDoc(userRef, { verificationStatus: "rejected", rejectionReason: reason });
+    const name = profile.role === "job_seeker" ? profile.displayName : profile.businessName;
+    void notifyRejection(profile.email, name, reason);
+    setRejectingUid(null);
   }
 
   if (pending === null) {
@@ -111,22 +121,29 @@ function Queue() {
             <IdDocumentPreview path={profile.idDocumentPath} />
           )}
 
-          <div className="mt-4 flex gap-2">
-            <button
-              type="button"
-              onClick={() => decide(profile.uid, "approved")}
-              className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
-            >
-              Approve
-            </button>
-            <button
-              type="button"
-              onClick={() => decide(profile.uid, "rejected")}
-              className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-gorse hover:text-gorse cursor-pointer"
-            >
-              Reject
-            </button>
-          </div>
+          {rejectingUid === profile.uid ? (
+            <RejectionForm
+              onCancel={() => setRejectingUid(null)}
+              onConfirm={(reason) => reject(profile, reason)}
+            />
+          ) : (
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => approve(profile.uid)}
+                className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => setRejectingUid(profile.uid)}
+                className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-gorse hover:text-gorse cursor-pointer"
+              >
+                Reject
+              </button>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -179,6 +196,55 @@ function IdDocumentPreview({ path }: { path: string }) {
           />
         </a>
       )}
+    </div>
+  );
+}
+
+function RejectionForm({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  return (
+    <div className="mt-4 rounded-xl border border-border-strong bg-paper p-4">
+      <label htmlFor="reject-reason" className="mb-1.5 block text-xs font-medium text-granite">
+        Why are you rejecting this? They&rsquo;ll see this message and it&rsquo;ll be
+        emailed to them.
+      </label>
+      <textarea
+        id="reject-reason"
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={3}
+        placeholder="e.g. The ID you uploaded doesn't match the name on your profile — please resubmit with a clear photo."
+        className="w-full rounded-lg border border-border-strong bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+      />
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={!reason.trim() || isSubmitting}
+          onClick={async () => {
+            setIsSubmitting(true);
+            await onConfirm(reason.trim());
+          }}
+          className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? "Rejecting…" : "Confirm rejection"}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={isSubmitting}
+          className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-tide cursor-pointer"
+        >
+          Cancel
+        </button>
+      </div>
     </div>
   );
 }
