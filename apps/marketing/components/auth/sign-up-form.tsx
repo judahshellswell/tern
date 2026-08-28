@@ -9,6 +9,7 @@ import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEm
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
+import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 
 type Step = "role" | "account" | "details";
 
@@ -31,6 +32,8 @@ export function SignUpForm() {
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoFileError, setLogoFileError] = useState("");
 
   const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
   const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
@@ -90,6 +93,10 @@ export function SignUpForm() {
       setError("Please upload a photo ID to continue.");
       return;
     }
+    if (role === "employer" && !logoFile) {
+      setError("Please upload a logo to continue.");
+      return;
+    }
     setError("");
     setIsPending(true);
     try {
@@ -113,7 +120,8 @@ export function SignUpForm() {
           void notifyGuardian(guardianEmail, displayName);
         }
         void notifyAdminOfSignup("job_seeker", displayName, email);
-      } else {
+      } else if (logoFile) {
+        const { path: logoPath } = await uploadEmployerLogo(uid, logoFile);
         await createEmployerProfile(
           uid,
           email,
@@ -121,13 +129,15 @@ export function SignUpForm() {
             businessName,
             registrationNumber,
             location,
+            logoPath,
           },
           emailVerified,
         );
         void notifyAdminOfSignup("employer", businessName, email);
       }
       router.push("/dashboard");
-    } catch {
+    } catch (err) {
+      console.error(err);
       setError("Couldn't save your details. Please try again.");
     } finally {
       setIsPending(false);
@@ -332,6 +342,36 @@ export function SignUpForm() {
             onChange={setLocation}
             placeholder="St Helier, Jersey"
           />
+          <div>
+            <label htmlFor="logo-upload" className="mb-1.5 block text-xs font-medium text-granite">
+              Logo
+            </label>
+            <input
+              id="logo-upload"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (file) {
+                  const validationError = validateLogo(file);
+                  setLogoFileError(validationError ?? "");
+                  setLogoFile(validationError ? null : file);
+                } else {
+                  setLogoFile(null);
+                  setLogoFileError("");
+                }
+              }}
+              className="block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
+            />
+            <p className="mt-1.5 text-xs text-granite-soft">
+              Shown on your job listings so candidates can recognise you.
+            </p>
+            {logoFileError && (
+              <p role="alert" className="mt-1.5 text-xs text-gorse">
+                {logoFileError}
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -339,7 +379,8 @@ export function SignUpForm() {
         type="submit"
         disabled={
           isPending ||
-          (role === "job_seeker" && (underMinimumAge || !idFile))
+          (role === "job_seeker" && (underMinimumAge || !idFile)) ||
+          (role === "employer" && !logoFile)
         }
         className="mt-5 w-full rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >

@@ -141,7 +141,11 @@ function Queue() {
           )}
 
           {profile.role === "job_seeker" && profile.idDocumentPath && (
-            <IdDocumentPreview path={profile.idDocumentPath} />
+            <IdDocumentPreview path={profile.idDocumentPath} label="Photo ID" />
+          )}
+
+          {profile.role === "employer" && profile.logoPath && (
+            <IdDocumentPreview path={profile.logoPath} label="Logo" />
           )}
 
           {activeAction?.uid === profile.uid ? (
@@ -183,7 +187,7 @@ function Queue() {
   );
 }
 
-function IdDocumentPreview({ path }: { path: string }) {
+function IdDocumentPreview({ path, label }: { path: string; label: string }) {
   const [url, setUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const isPdf = path.toLowerCase().endsWith(".pdf");
@@ -204,8 +208,8 @@ function IdDocumentPreview({ path }: { path: string }) {
 
   return (
     <div className="mt-3">
-      <p className="mb-1.5 text-xs text-granite-soft">Photo ID</p>
-      {failed && <p className="text-xs text-gorse">Couldn&rsquo;t load the ID document.</p>}
+      <p className="mb-1.5 text-xs text-granite-soft">{label}</p>
+      {failed && <p className="text-xs text-gorse">Couldn&rsquo;t load the document.</p>}
       {!failed && !url && <p className="text-xs text-granite-soft">Loading…</p>}
       {url && isPdf && (
         <a
@@ -221,7 +225,7 @@ function IdDocumentPreview({ path }: { path: string }) {
         <a href={url} target="_blank" rel="noopener noreferrer">
           <Image
             src={url}
-            alt="Uploaded ID document"
+            alt={label}
             width={240}
             height={160}
             unoptimized

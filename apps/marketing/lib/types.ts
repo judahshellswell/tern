@@ -28,6 +28,7 @@ export type EmployerProfile = {
   businessName: string;
   registrationNumber: string;
   location: string;
+  logoPath: string; // Storage path, e.g. "employer-logos/{uid}/logo.jpg"
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
@@ -58,6 +59,7 @@ export type Job = {
   id: string;
   employerId: string;
   employerName: string;
+  employerLogoUrl: string | null;
   title: string;
   description: string;
   type: JobType;
@@ -84,6 +86,13 @@ export type Application = {
   employerId: string;
   applicantId: string;
   applicantName: string;
+  // Denormalized from the applicant's own verificationStatus and kept in
+  // sync when they're banned. Firestore list-query rules can only be
+  // proven safe using fields the query itself filters on — the employer's
+  // applicants query filters on this directly — so this can't be a live
+  // get() against the applicant's profile the way a single-document read
+  // could.
+  applicantBanned: boolean;
   coverNote: string;
   status: ApplicationStatus;
   createdAt: string;

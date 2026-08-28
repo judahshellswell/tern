@@ -5,6 +5,7 @@ import Link from "next/link";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
+import { notifyEmployerOfNewApplication } from "@/app/actions";
 
 export function ApplyPanel({
   jobId,
@@ -72,16 +73,19 @@ export function ApplyPanel({
     setError("");
     setIsPending(true);
     try {
+      const applicantName = (profile as { displayName: string }).displayName;
       await addDoc(collection(getClientFirestore(), "applications"), {
         jobId,
         jobTitle,
         employerId,
         applicantId: user!.uid,
-        applicantName: (profile as { displayName: string }).displayName,
+        applicantName,
+        applicantBanned: false,
         coverNote,
         status: "submitted",
         createdAt: serverTimestamp(),
       });
+      void notifyEmployerOfNewApplication(employerId, jobId, jobTitle, applicantName, coverNote);
       setSubmitted(true);
     } catch {
       setError("Couldn't submit your application. Please try again.");

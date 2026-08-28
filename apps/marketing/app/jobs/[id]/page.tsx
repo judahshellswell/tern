@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { JOB_TYPE_LABELS } from "@/lib/types";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { ApplyPanel } from "@/components/jobs/apply-panel";
+import { EmployerLogo } from "@/components/jobs/jobs-browser";
 
 type Params = { id: string };
 
@@ -17,6 +18,7 @@ async function getJob(id: string) {
     id: snap.id,
     employerId: data.employerId as string,
     employerName: data.employerName as string,
+    employerLogoUrl: (data.employerLogoUrl as string | null) ?? null,
     title: data.title as string,
     description: data.description as string,
     type: data.type as keyof typeof JOB_TYPE_LABELS,
@@ -62,7 +64,10 @@ export default async function JobDetailPage({
           <h1 className="mt-4 text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
             {job.title}
           </h1>
-          <p className="mt-2 text-lg text-granite">{job.employerName}</p>
+          <div className="mt-3 flex items-center gap-3">
+            <EmployerLogo url={job.employerLogoUrl} name={job.employerName} size={48} />
+            <p className="text-lg text-granite">{job.employerName}</p>
+          </div>
 
           <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-sm text-ink">
             <span>{job.location}</span>

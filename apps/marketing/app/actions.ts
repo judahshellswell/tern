@@ -5,6 +5,8 @@ import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 import { sendRejectionNotification } from "@/lib/rejection-notification";
 import { sendBanNotification } from "@/lib/ban-notification";
+import { notifyEmployerOfApplication } from "@/lib/application-notification";
+import { getAdminFirestore } from "@/lib/firebase-admin";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -94,6 +96,40 @@ export async function notifyBan(userEmail: string, name: string, reason: string)
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send ban notification:", err);
+    return { ok: false } as const;
+  }
+}
+
+// Called right after an application is written to Firestore. The
+// employer's email/business name comes from server-truth (their own
+// profile doc via the Admin SDK) rather than anything the client passes
+// in. Same best-effort contract as the other notify actions — the
+// application already exists by the time this runs, so a failed send
+// shouldn't be surfaced as if the application failed.
+export async function notifyEmployerOfNewApplication(
+  employerId: string,
+  jobId: string,
+  jobTitle: string,
+  applicantName: string,
+  coverNote: string,
+) {
+  try {
+    const snap = await getAdminFirestore().collection("users").doc(employerId).get();
+    const employer = snap.data();
+    if (!employer || employer.role !== "employer") {
+      return { ok: false } as const;
+    }
+    await notifyEmployerOfApplication({
+      employerEmail: employer.email,
+      employerName: employer.businessName,
+      applicantName,
+      jobId,
+      jobTitle,
+      coverNote,
+    });
+    return { ok: true } as const;
+  } catch (err) {
+    console.error("Failed to send application notification:", err);
     return { ok: false } as const;
   }
 }

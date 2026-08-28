@@ -4,6 +4,7 @@ import { useState } from "react";
 import { isUnder18, isUnderMinimumAge, MINIMUM_AGE, type UserProfile } from "@/lib/types";
 import { createJobSeekerProfile, createEmployerProfile } from "@/lib/profile";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
+import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { notifyAdminOfSignup } from "@/app/actions";
 import { useAuth } from "@/components/auth/auth-provider";
 
@@ -33,6 +34,8 @@ export function ReapplyForm({
   const [location, setLocation] = useState(profile.location);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoFileError, setLogoFileError] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
@@ -47,6 +50,10 @@ export function ReapplyForm({
     }
     if (profile.role === "job_seeker" && !idFile) {
       setError("Please upload a photo ID to continue.");
+      return;
+    }
+    if (profile.role === "employer" && !logoFile) {
+      setError("Please upload a logo to continue.");
       return;
     }
     setError("");
@@ -68,7 +75,8 @@ export function ReapplyForm({
           emailVerified,
         );
         void notifyAdminOfSignup("job_seeker", displayName, profile.email);
-      } else {
+      } else if (profile.role === "employer" && logoFile) {
+        const { path: logoPath } = await uploadEmployerLogo(profile.uid, logoFile);
         await createEmployerProfile(
           profile.uid,
           profile.email,
@@ -76,6 +84,7 @@ export function ReapplyForm({
             businessName,
             registrationNumber,
             location,
+            logoPath,
           },
           emailVerified,
         );
@@ -165,6 +174,39 @@ export function ReapplyForm({
               onChange={setRegistrationNumber}
             />
             <Field label="Location" value={location} onChange={setLocation} />
+            <div>
+              <label
+                htmlFor="reapply-logo-upload"
+                className="mb-1.5 block text-xs font-medium text-granite"
+              >
+                Logo
+              </label>
+              <input
+                id="reapply-logo-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null;
+                  if (file) {
+                    const validationError = validateLogo(file);
+                    setLogoFileError(validationError ?? "");
+                    setLogoFile(validationError ? null : file);
+                  } else {
+                    setLogoFile(null);
+                    setLogoFileError("");
+                  }
+                }}
+                className="block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper-raised file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
+              />
+              <p className="mt-1.5 text-xs text-granite-soft">
+                Upload a new logo, even if you uploaded one before.
+              </p>
+              {logoFileError && (
+                <p role="alert" className="mt-1.5 text-xs text-gorse">
+                  {logoFileError}
+                </p>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -172,7 +214,9 @@ export function ReapplyForm({
       <button
         type="submit"
         disabled={
-          isPending || (profile.role === "job_seeker" && (underMinimumAge || !idFile))
+          isPending ||
+          (profile.role === "job_seeker" && (underMinimumAge || !idFile)) ||
+          (profile.role === "employer" && !logoFile)
         }
         className="mt-4 rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >

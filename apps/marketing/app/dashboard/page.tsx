@@ -123,15 +123,26 @@ export default function DashboardPage() {
                 </p>
               </Link>
             ) : profile.verificationStatus === "approved" ? (
-              <Link
-                href="/employer/jobs/new"
-                className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
-              >
-                <p className="font-serif text-lg font-semibold">Post a job</p>
-                <p className="mt-1 text-sm text-granite">
-                  Part-time, apprenticeship, internship, temporary or seasonal.
-                </p>
-              </Link>
+              <>
+                <Link
+                  href="/employer/jobs/new"
+                  className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                >
+                  <p className="font-serif text-lg font-semibold">Post a job</p>
+                  <p className="mt-1 text-sm text-granite">
+                    Part-time, apprenticeship, internship, temporary or seasonal.
+                  </p>
+                </Link>
+                <Link
+                  href="/employer/jobs"
+                  className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                >
+                  <p className="font-serif text-lg font-semibold">Your jobs</p>
+                  <p className="mt-1 text-sm text-granite">
+                    See your posted jobs and review applicants.
+                  </p>
+                </Link>
+              </>
             ) : (
               <div className="rounded-2xl border border-border-strong bg-paper-raised p-5 opacity-60">
                 <p className="font-serif text-lg font-semibold">Post a job</p>

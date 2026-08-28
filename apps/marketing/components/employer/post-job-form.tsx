@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { getClientFirestore } from "@/lib/firebase-client";
+import { ref, getDownloadURL } from "firebase/storage";
+import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { JOB_TYPE_LABELS, type JobType, type PayType } from "@/lib/types";
 
@@ -88,9 +89,14 @@ export function PostJobForm() {
 
     setIsPending(true);
     try {
+      const logoPath = (profile as { logoPath: string }).logoPath;
+      const employerLogoUrl = logoPath
+        ? await getDownloadURL(ref(getClientStorage(), logoPath))
+        : null;
       await addDoc(collection(getClientFirestore(), "jobs"), {
         employerId: user!.uid,
         employerName: (profile as { businessName: string }).businessName,
+        employerLogoUrl,
         title,
         description,
         type,

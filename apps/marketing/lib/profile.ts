@@ -14,6 +14,7 @@ export type EmployerSignupDetails = {
   businessName: string;
   registrationNumber: string;
   location: string;
+  logoPath: string;
 };
 
 export async function createJobSeekerProfile(
@@ -53,6 +54,7 @@ export async function createEmployerProfile(
     businessName: details.businessName,
     registrationNumber: details.registrationNumber,
     location: details.location,
+    logoPath: details.logoPath,
     isFreeEmailDomain: isFreeEmailDomain(email),
     verificationStatus: "pending",
     emailVerified,

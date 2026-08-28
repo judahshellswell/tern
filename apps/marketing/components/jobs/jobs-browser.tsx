@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { JOB_TYPE_LABELS, type Job, type JobType } from "@/lib/types";
@@ -62,6 +63,40 @@ export function JobsBrowser() {
   );
 }
 
+export function EmployerLogo({
+  url,
+  name,
+  size = 40,
+}: {
+  url: string | null | undefined;
+  name: string;
+  size?: number;
+}) {
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt={name}
+        width={size}
+        height={size}
+        unoptimized
+        className="shrink-0 rounded-full border border-border-strong object-cover"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="flex shrink-0 items-center justify-center rounded-full border border-border-strong bg-paper font-serif font-semibold text-granite"
+      style={{ width: size, height: size, fontSize: size * 0.4 }}
+    >
+      {name.charAt(0).toUpperCase()}
+    </div>
+  );
+}
+
 function FilterChip({
   label,
   active,
@@ -93,9 +128,12 @@ function JobCard({ job }: { job: Job }) {
       className="rounded-2xl border border-border-strong bg-paper-raised p-6 transition-colors hover:border-tide"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="font-serif text-lg font-semibold">{job.title}</p>
-          <p className="mt-0.5 text-sm text-granite">{job.employerName}</p>
+        <div className="flex items-center gap-3">
+          <EmployerLogo url={job.employerLogoUrl} name={job.employerName} />
+          <div>
+            <p className="font-serif text-lg font-semibold">{job.title}</p>
+            <p className="mt-0.5 text-sm text-granite">{job.employerName}</p>
+          </div>
         </div>
         <span className="rounded-full bg-tide/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-tide">
           {JOB_TYPE_LABELS[job.type]}
