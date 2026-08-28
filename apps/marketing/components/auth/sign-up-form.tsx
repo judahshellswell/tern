@@ -361,8 +361,18 @@ export function SignUpForm() {
                   setLogoFileError("");
                 }
               }}
-              className="block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
+              className="block w-full text-sm text-transparent file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
             />
+            {logoFile && (
+              <div className="mt-2 flex items-center gap-2.5 rounded-lg border border-border-strong bg-paper px-3 py-2">
+                <img
+                  src={URL.createObjectURL(logoFile)}
+                  alt=""
+                  className="h-8 w-8 flex-none rounded object-cover"
+                />
+                <span className="min-w-0 break-words text-xs text-ink">{logoFile.name}</span>
+              </div>
+            )}
             <p className="mt-1.5 text-xs text-granite-soft">
               Shown on your job listings so candidates can recognise you.
             </p>
