@@ -113,15 +113,26 @@ export default function DashboardPage() {
 
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
-              <Link
-                href="/jobs"
-                className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
-              >
-                <p className="font-serif text-lg font-semibold">Browse jobs</p>
-                <p className="mt-1 text-sm text-granite">
-                  See what&rsquo;s open right now in Jersey.
-                </p>
-              </Link>
+              <>
+                <Link
+                  href="/jobs"
+                  className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                >
+                  <p className="font-serif text-lg font-semibold">Browse jobs</p>
+                  <p className="mt-1 text-sm text-granite">
+                    See what&rsquo;s open right now in Jersey.
+                  </p>
+                </Link>
+                <Link
+                  href="/dashboard/portfolio"
+                  className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                >
+                  <p className="font-serif text-lg font-semibold">Your portfolio</p>
+                  <p className="mt-1 text-sm text-granite">
+                    Add achievements and activities employers can see.
+                  </p>
+                </Link>
+              </>
             ) : profile.verificationStatus === "approved" ? (
               <>
                 <Link

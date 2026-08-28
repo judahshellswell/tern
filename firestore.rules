@@ -75,6 +75,24 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Job seeker portfolio entries (self-reported achievements/skills).
+    // Self-service CRUD only — the owner can add/edit/delete freely,
+    // independent of verificationStatus (unlike the profile doc itself,
+    // this isn't locked once approved, since it should stay editable as
+    // the seeker builds it up over time). Employer visibility is NOT
+    // granted here: Firestore rules can only get()/exists() a single
+    // known document path, never run a query, so "does an application
+    // exist linking this uid to that employerId" can't be expressed as a
+    // rule condition. Employers see this data through a server action
+    // (getApplicantProfileForEmployer in app/actions.ts) that queries
+    // `applications` via the Admin SDK instead — see that file.
+    match /users/{uid}/portfolioEntries/{entryId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == uid || isAdmin());
+      allow create, update, delete: if request.auth != null
+        && request.auth.uid == uid;
+    }
+
     function isApprovedEmployer(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
         && get(/databases/$(database)/documents/users/$(uid)).data.role == "employer"

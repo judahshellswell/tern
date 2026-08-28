@@ -38,6 +38,13 @@ export type EmployerProfile = {
 
 export type UserProfile = JobSeekerProfile | EmployerProfile;
 
+export type PortfolioEntry = {
+  id: string;
+  title: string; // e.g. "Member of U16 football Jersey team"
+  description: string; // short blurb on what it involved / why it matters
+  createdAt: string;
+};
+
 export type JobType =
   | "part_time"
   | "apprenticeship"

@@ -153,7 +153,12 @@ function JobApplicants({ jobId }: { jobId: string }) {
                 className="rounded-2xl border border-border-strong bg-paper-raised p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <p className="font-serif text-lg font-semibold">{application.applicantName}</p>
+                  <Link
+                    href={`/employer/applicants/${application.applicantId}`}
+                    className="font-serif text-lg font-semibold text-ink underline decoration-border-strong underline-offset-4 transition-colors hover:text-tide hover:decoration-tide"
+                  >
+                    {application.applicantName}
+                  </Link>
                   <select
                     value={application.status}
                     onChange={(e) =>

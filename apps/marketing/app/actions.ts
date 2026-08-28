@@ -133,3 +133,61 @@ export async function notifyEmployerOfNewApplication(
     return { ok: false } as const;
   }
 }
+
+export type ApplicantProfileForEmployer = {
+  displayName: string;
+  location: string;
+  portfolio: { id: string; title: string; description: string }[];
+};
+
+// Lets an employer open a fuller profile for someone who applied to one
+// of their jobs. There's no server-side session in this app (auth is
+// Firebase client-SDK only), so the caller's identity can't be verified
+// here the way a normal server session would — instead, access is gated
+// by requiring a real `applications` document linking employerId to
+// applicantId, which only exists if that applicant genuinely applied to
+// that employer's job. This is the same trust boundary the rest of the
+// app already exposes to that employer via the applications collection
+// (they can already read applicantName off a real application) — this
+// action just returns more fields (location, portfolio) once that same
+// relationship is confirmed. Never returns idDocumentPath, dateOfBirth,
+// guardianEmail, or email.
+export async function getApplicantProfileForEmployer(
+  employerId: string,
+  applicantId: string,
+): Promise<ApplicantProfileForEmployer | null> {
+  const db = getAdminFirestore();
+
+  const applicationsSnap = await db
+    .collection("applications")
+    .where("employerId", "==", employerId)
+    .where("applicantId", "==", applicantId)
+    .limit(1)
+    .get();
+  if (applicationsSnap.empty) {
+    return null;
+  }
+
+  const profileSnap = await db.collection("users").doc(applicantId).get();
+  const profile = profileSnap.data();
+  if (!profile || profile.role !== "job_seeker") {
+    return null;
+  }
+
+  const portfolioSnap = await db
+    .collection("users")
+    .doc(applicantId)
+    .collection("portfolioEntries")
+    .orderBy("createdAt", "desc")
+    .get();
+
+  return {
+    displayName: profile.displayName,
+    location: profile.location,
+    portfolio: portfolioSnap.docs.map((d) => ({
+      id: d.id,
+      title: d.data().title,
+      description: d.data().description,
+    })),
+  };
+}
