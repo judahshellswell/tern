@@ -3,27 +3,36 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import { JOB_TYPE_LABELS, type JobType, type PayType } from "@/lib/types";
+import { JOB_TYPE_LABELS, type Job, type JobType, type PayMode, type PayType } from "@/lib/types";
 
 const JOB_TYPES = Object.keys(JOB_TYPE_LABELS) as JobType[];
 
-export function PostJobForm() {
+const PAY_MODE_LABELS: Record<PayMode, string> = {
+  range: "Range",
+  fixed: "Fixed",
+  negotiable: "Negotiable",
+};
+
+export function PostJobForm({ initialJob }: { initialJob?: Job }) {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
 
-  const [type, setType] = useState<JobType>("part_time");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [location, setLocation] = useState("");
-  const [payType, setPayType] = useState<PayType>("hourly");
-  const [payMin, setPayMin] = useState("");
-  const [payMax, setPayMax] = useState("");
+  const [type, setType] = useState<JobType>(initialJob?.type ?? "part_time");
+  const [title, setTitle] = useState(initialJob?.title ?? "");
+  const [description, setDescription] = useState(initialJob?.description ?? "");
+  const [location, setLocation] = useState(initialJob?.location ?? "");
+  const [payType, setPayType] = useState<PayType>(initialJob?.payType ?? "hourly");
+  const [payMode, setPayMode] = useState<PayMode>(initialJob?.payMode ?? "range");
+  const [payMin, setPayMin] = useState(initialJob?.payMin != null ? String(initialJob.payMin) : "");
+  const [payMax, setPayMax] = useState(initialJob?.payMax != null ? String(initialJob.payMax) : "");
+  const [hoursPerWeek, setHoursPerWeek] = useState(initialJob?.hoursPerWeek ?? "");
+  const [closeDate, setCloseDate] = useState(initialJob?.closeDate ?? "");
   const [skillInput, setSkillInput] = useState("");
-  const [skills, setSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>(initialJob?.skills ?? []);
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
@@ -80,37 +89,61 @@ export function PostJobForm() {
     e.preventDefault();
     setError("");
 
-    const min = Number(payMin);
-    const max = Number(payMax);
-    if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max < min) {
-      setError("Enter a valid pay range.");
-      return;
+    let min: number | null = null;
+    let max: number | null = null;
+    if (payMode === "range") {
+      min = Number(payMin);
+      max = Number(payMax);
+      if (!Number.isFinite(min) || !Number.isFinite(max) || min <= 0 || max < min) {
+        setError("Enter a valid pay range.");
+        return;
+      }
+    } else if (payMode === "fixed") {
+      min = Number(payMin);
+      if (!Number.isFinite(min) || min <= 0) {
+        setError("Enter a valid pay amount.");
+        return;
+      }
     }
 
     setIsPending(true);
     try {
-      const logoPath = (profile as { logoPath: string }).logoPath;
-      const employerLogoUrl = logoPath
-        ? await getDownloadURL(ref(getClientStorage(), logoPath))
-        : null;
-      await addDoc(collection(getClientFirestore(), "jobs"), {
-        employerId: user!.uid,
-        employerName: (profile as { businessName: string }).businessName,
-        employerLogoUrl,
+      const content = {
         title,
         description,
         type,
         location,
         payType,
+        payMode,
         payMin: min,
         payMax: max,
+        hoursPerWeek: hoursPerWeek.trim() || null,
+        closeDate: closeDate || null,
         skills,
-        status: "published",
-        createdAt: serverTimestamp(),
-      });
-      router.push("/jobs");
+      };
+
+      if (initialJob) {
+        await updateDoc(doc(getClientFirestore(), "jobs", initialJob.id), content);
+        router.push(`/employer/jobs/${initialJob.id}`);
+      } else {
+        const logoPath = (profile as { logoPath: string }).logoPath;
+        const employerLogoUrl = logoPath
+          ? await getDownloadURL(ref(getClientStorage(), logoPath))
+          : null;
+        await addDoc(collection(getClientFirestore(), "jobs"), {
+          ...content,
+          employerId: user!.uid,
+          employerName: (profile as { businessName: string }).businessName,
+          employerLogoUrl,
+          status: "published",
+          createdAt: serverTimestamp(),
+        });
+        router.push("/jobs");
+      }
     } catch {
-      setError("Couldn't post the job. Please try again.");
+      setError(
+        initialJob ? "Couldn't save your changes. Please try again." : "Couldn't post the job. Please try again.",
+      );
     } finally {
       setIsPending(false);
     }
@@ -161,6 +194,14 @@ export function PostJobForm() {
 
         <TextField label="Location" value={location} onChange={setLocation} placeholder="St Helier, Jersey" />
 
+        <TextField
+          label="Hours per week (optional)"
+          value={hoursPerWeek}
+          onChange={setHoursPerWeek}
+          placeholder="16-20"
+          required={false}
+        />
+
         <div>
           <label className="mb-2 block text-xs font-medium text-granite">Pay</label>
           <div className="flex flex-wrap gap-2">
@@ -179,28 +220,63 @@ export function PostJobForm() {
               </button>
             ))}
           </div>
-          <div className="mt-3 flex gap-3">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              required
-              placeholder="Min £"
-              value={payMin}
-              onChange={(e) => setPayMin(e.target.value)}
-              className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
-            />
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              required
-              placeholder="Max £"
-              value={payMax}
-              onChange={(e) => setPayMax(e.target.value)}
-              className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
-            />
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(["range", "fixed", "negotiable"] as PayMode[]).map((pm) => (
+              <button
+                key={pm}
+                type="button"
+                onClick={() => setPayMode(pm)}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                  payMode === pm
+                    ? "border-tide bg-tide text-paper"
+                    : "border-border-strong text-ink hover:border-tide"
+                }`}
+              >
+                {PAY_MODE_LABELS[pm]}
+              </button>
+            ))}
           </div>
+
+          {payMode === "range" && (
+            <div className="mt-3 flex gap-3">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="Min £"
+                value={payMin}
+                onChange={(e) => setPayMin(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="Max £"
+                value={payMax}
+                onChange={(e) => setPayMax(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+            </div>
+          )}
+
+          {payMode === "fixed" && (
+            <div className="mt-3">
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                placeholder="Pay £"
+                value={payMin}
+                onChange={(e) => setPayMin(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+            </div>
+          )}
         </div>
 
         <div>
@@ -247,12 +323,31 @@ export function PostJobForm() {
           )}
         </div>
 
+        <div>
+          <label htmlFor="job-close-date" className="mb-1.5 block text-xs font-medium text-granite">
+            Closing date (optional)
+          </label>
+          <input
+            id="job-close-date"
+            type="date"
+            value={closeDate}
+            onChange={(e) => setCloseDate(e.target.value)}
+            className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink outline-none transition-colors focus:border-tide"
+          />
+        </div>
+
         <button
           type="submit"
           disabled={isPending}
           className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer"
         >
-          {isPending ? "Publishing…" : "Publish job"}
+          {isPending
+            ? initialJob
+              ? "Saving…"
+              : "Publishing…"
+            : initialJob
+              ? "Save changes"
+              : "Publish job"}
         </button>
 
         {error && (
@@ -270,11 +365,13 @@ function TextField({
   value,
   onChange,
   placeholder,
+  required = true,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  required?: boolean;
 }) {
   const id = `job-field-${label.toLowerCase().replace(/\s+/g, "-")}`;
   return (
@@ -285,7 +382,7 @@ function TextField({
       <input
         id={id}
         type="text"
-        required
+        required={required}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

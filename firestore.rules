@@ -107,14 +107,28 @@ service cloud.firestore {
 
     // --- Jobs ---
     // Anyone can read published jobs (public browse). Only the owning,
-    // approved employer can create or edit their own jobs.
+    // approved employer can create or edit their own jobs. Update is
+    // restricted to content + status fields only — employerId,
+    // employerName, employerLogoUrl, and createdAt can never be changed
+    // by the owning employer once created, since the edit form and the
+    // close/reopen toggle are both real, reachable client write paths now
+    // (not just the create-only form this rule was originally written
+    // for), and a modified client could otherwise rewrite ownership,
+    // spoof branding, or mess with sort order.
     match /jobs/{jobId} {
       allow read: if resource.data.status == "published"
         || (request.auth != null && request.auth.uid == resource.data.employerId);
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.employerId
         && isApprovedEmployer(request.auth.uid);
-      allow update, delete: if (request.auth != null && request.auth.uid == resource.data.employerId)
+      allow update: if isAdmin()
+        || (request.auth != null
+          && request.auth.uid == resource.data.employerId
+          && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["title", "description", "type", "location", "payType",
+                      "payMode", "payMin", "payMax", "hoursPerWeek",
+                      "closeDate", "skills", "status"]));
+      allow delete: if (request.auth != null && request.auth.uid == resource.data.employerId)
         || isAdmin();
     }
 

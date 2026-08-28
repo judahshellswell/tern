@@ -16,6 +16,8 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { JOB_TYPE_LABELS, type Application, type ApplicationStatus, type Job } from "@/lib/types";
+import { formatCloseDate, formatPay } from "@/lib/format";
+import { notifyApplicantOfStatusChange } from "@/app/actions";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
   submitted: "New",
@@ -59,6 +61,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
   const { user, profile, loading } = useAuth();
   const [job, setJob] = useState<Job | null | undefined>(undefined);
   const [applications, setApplications] = useState<Application[] | null>(null);
+  const [confirmingClose, setConfirmingClose] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -88,8 +91,19 @@ function JobApplicants({ jobId }: { jobId: string }) {
     return unsubscribe;
   }, [user, job, jobId]);
 
-  async function updateStatus(applicationId: string, status: ApplicationStatus) {
-    await updateDoc(doc(getClientFirestore(), "applications", applicationId), { status });
+  async function updateStatus(application: Application, status: ApplicationStatus) {
+    await updateDoc(doc(getClientFirestore(), "applications", application.id), { status });
+    if (status !== "submitted") {
+      void notifyApplicantOfStatusChange(application.applicantId, application.jobTitle, status);
+    }
+  }
+
+  async function toggleJobStatus() {
+    if (!job) return;
+    await updateDoc(doc(getClientFirestore(), "jobs", job.id), {
+      status: job.status === "published" ? "closed" : "published",
+    });
+    setConfirmingClose(false);
   }
 
   if (loading) {
@@ -127,13 +141,73 @@ function JobApplicants({ jobId }: { jobId: string }) {
     );
   }
 
+  const closeDateLabel = formatCloseDate(job.closeDate);
+
   return (
     <>
-      <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
-        {JOB_TYPE_LABELS[job.type]}
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
+          {JOB_TYPE_LABELS[job.type]}
+        </p>
+        <span
+          className={`rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-wide ${
+            job.status === "published" ? "bg-tide/10 text-tide" : "bg-gorse-bg text-gorse"
+          }`}
+        >
+          {job.status === "published" ? "Published" : "Closed"}
+        </span>
+      </div>
       <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight">{job.title}</h1>
       <p className="mt-1 text-granite">{job.location}</p>
+      <p className="mt-1 font-mono text-sm text-granite-soft">
+        {formatPay(job)}
+        {closeDateLabel ? ` · ${closeDateLabel}` : ""}
+      </p>
+
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        <Link
+          href={`/employer/jobs/${job.id}/edit`}
+          className="text-sm font-medium text-tide underline hover:text-tide-bright"
+        >
+          Edit job
+        </Link>
+        {!confirmingClose && (
+          <button
+            type="button"
+            onClick={() =>
+              job.status === "published" ? setConfirmingClose(true) : toggleJobStatus()
+            }
+            className="text-sm font-medium text-tide underline hover:text-tide-bright cursor-pointer"
+          >
+            {job.status === "published" ? "Close job" : "Reopen job"}
+          </button>
+        )}
+      </div>
+
+      {confirmingClose && (
+        <div className="mt-4 rounded-xl border border-border-strong bg-paper-raised p-4">
+          <p className="text-sm text-ink">
+            Are you sure? Applicants will still be able to see this in your dashboard, but
+            it&rsquo;ll disappear from public search.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={toggleJobStatus}
+              className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 cursor-pointer"
+            >
+              Close job
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingClose(false)}
+              className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-tide cursor-pointer"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-8">
         {applications === null && <p className="text-granite">Loading applicants…</p>}
@@ -162,7 +236,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
                   <select
                     value={application.status}
                     onChange={(e) =>
-                      updateStatus(application.id, e.target.value as ApplicationStatus)
+                      updateStatus(application, e.target.value as ApplicationStatus)
                     }
                     className="rounded-full border border-border-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink outline-none transition-colors focus:border-tide"
                   >

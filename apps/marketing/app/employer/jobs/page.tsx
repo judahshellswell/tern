@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { JOB_TYPE_LABELS, type Job } from "@/lib/types";
+import { formatPay } from "@/lib/format";
 
 export default function EmployerJobsPage() {
   return (
@@ -96,11 +97,22 @@ function JobsList() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="font-serif text-lg font-semibold">{job.title}</p>
-              <p className="mt-0.5 text-sm text-granite">{job.location}</p>
+              <p className="mt-0.5 text-sm text-granite">
+                {job.location} &middot; {formatPay(job)}
+              </p>
             </div>
-            <span className="rounded-full bg-tide/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-tide">
-              {JOB_TYPE_LABELS[job.type]}
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span
+                className={`rounded-full px-3 py-1 font-mono text-[11px] uppercase tracking-wide ${
+                  job.status === "published" ? "bg-tide/10 text-tide" : "bg-gorse-bg text-gorse"
+                }`}
+              >
+                {job.status === "published" ? "Published" : "Closed"}
+              </span>
+              <span className="rounded-full bg-tide/10 px-3 py-1 font-mono text-[11px] uppercase tracking-wide text-tide">
+                {JOB_TYPE_LABELS[job.type]}
+              </span>
+            </div>
           </div>
         </Link>
       ))}

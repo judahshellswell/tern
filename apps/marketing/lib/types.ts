@@ -62,6 +62,10 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
 
 export type PayType = "hourly" | "salary_pro_rata" | "fixed";
 
+// How pay is entered — a separate axis from PayType (hourly/salary/fixed
+// is the pay *basis*; this is how the number(s) are given).
+export type PayMode = "range" | "fixed" | "negotiable";
+
 export type Job = {
   id: string;
   employerId: string;
@@ -72,8 +76,15 @@ export type Job = {
   type: JobType;
   location: string;
   payType: PayType;
-  payMin: number;
-  payMax: number;
+  // Optional/absent on jobs posted before payMode existed — treat as
+  // "range" at read time (that's what those docs structurally are).
+  payMode?: PayMode;
+  // range: the min; fixed: the single figure; negotiable: null.
+  payMin?: number | null;
+  // range: the max; fixed/negotiable: null.
+  payMax?: number | null;
+  hoursPerWeek?: string | null; // free text, e.g. "16-20"
+  closeDate?: string | null; // ISO yyyy-mm-dd, informational only — never auto-closes anything
   skills: string[];
   status: "published" | "closed";
   createdAt: string;

@@ -6,7 +6,9 @@ import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 import { sendRejectionNotification } from "@/lib/rejection-notification";
 import { sendBanNotification } from "@/lib/ban-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
+import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore } from "@/lib/firebase-admin";
+import type { ApplicationStatus } from "@/lib/types";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -130,6 +132,31 @@ export async function notifyEmployerOfNewApplication(
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send application notification:", err);
+    return { ok: false } as const;
+  }
+}
+
+// Called right after an employer changes an application's status. The
+// applicant's email/name comes from server-truth (their own profile doc
+// via the Admin SDK), never from the employer's client — same trust
+// boundary as notifyEmployerOfNewApplication. Same best-effort contract —
+// the status change is already written to Firestore by the time this
+// runs, so a failed send shouldn't be surfaced as if the update failed.
+export async function notifyApplicantOfStatusChange(
+  applicantId: string,
+  jobTitle: string,
+  status: Exclude<ApplicationStatus, "submitted">,
+) {
+  try {
+    const snap = await getAdminFirestore().collection("users").doc(applicantId).get();
+    const applicant = snap.data();
+    if (!applicant || applicant.role !== "job_seeker") {
+      return { ok: false } as const;
+    }
+    await sendStatusChangeNotification(applicant.email, applicant.displayName, jobTitle, status);
+    return { ok: true } as const;
+  } catch (err) {
+    console.error("Failed to send status change notification:", err);
     return { ok: false } as const;
   }
 }
