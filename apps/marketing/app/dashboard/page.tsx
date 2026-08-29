@@ -11,6 +11,7 @@ import { APPLICATION_STATUS_LABELS, type Application, type UserProfile } from "@
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
+import { EmployerLogo } from "@/components/jobs/jobs-browser";
 
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
@@ -305,21 +306,33 @@ function AppliedJobs({ uid }: { uid: string }) {
   return (
     <div className="flex max-h-[32rem] flex-col gap-4 overflow-y-auto pr-1">
       {applications.map((application) => (
-        <div
+        <Link
           key={application.id}
-          className="rounded-2xl border border-border-strong bg-paper-raised p-5"
+          href={`/dashboard/applications/${application.id}`}
+          className="block rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
         >
-          <p className="font-serif text-lg font-semibold">{application.jobTitle}</p>
+          <div className="flex items-center gap-3">
+            <EmployerLogo
+              url={application.employerLogoUrl}
+              name={application.employerName || application.jobTitle}
+            />
+            <div>
+              <p className="font-serif text-lg font-semibold">{application.jobTitle}</p>
+              {application.employerName && (
+                <p className="text-sm text-granite">{application.employerName}</p>
+              )}
+            </div>
+          </div>
           {application.jobStatus === "closed" ? (
-            <p className="mt-1 text-sm text-gorse">
+            <p className="mt-3 text-sm text-gorse">
               This job is no longer accepting applications and is currently being reviewed.
             </p>
           ) : (
-            <p className="mt-1 text-sm text-granite">
+            <p className="mt-3 text-sm text-granite">
               {APPLICATION_STATUS_LABELS[application.status]}
             </p>
           )}
-        </div>
+        </Link>
       ))}
     </div>
   );

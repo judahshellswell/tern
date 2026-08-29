@@ -132,6 +132,25 @@ export type Application = {
   // applicant at the rules level — this lets their own applications list
   // still show "this job has closed" without needing to read the job.
   jobStatus: "published" | "closed";
+  // The rest of these are a one-time snapshot of the job taken at apply
+  // time (never updated afterward, unlike jobStatus) — same reasoning as
+  // jobStatus: a closed job is unreadable to the applicant via jobs/{id},
+  // so the seeker's own "view this application" page reads entirely off
+  // the application doc rather than the job. Content drifting slightly
+  // from the live job after the seeker applied is expected/fine here —
+  // this is "what you applied to," not a live mirror.
+  employerName: string;
+  employerLogoUrl: string | null;
+  jobType: JobType;
+  location: string;
+  description: string;
+  payMode?: PayMode;
+  payMin?: number | null;
+  payMax?: number | null;
+  hoursMode?: HoursMode;
+  hoursMin?: number | null;
+  hoursMax?: number | null;
+  skills: string[];
   createdAt: string;
 };
 

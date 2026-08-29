@@ -103,6 +103,18 @@ export default async function JobDetailPage({
               jobId={job.id}
               jobTitle={job.title}
               employerId={job.employerId}
+              employerName={job.employerName}
+              employerLogoUrl={job.employerLogoUrl}
+              jobType={job.type}
+              location={job.location}
+              description={job.description}
+              payMode={job.payMode}
+              payMin={job.payMin}
+              payMax={job.payMax}
+              hoursMode={job.hoursMode}
+              hoursMin={job.hoursMin}
+              hoursMax={job.hoursMax}
+              skills={job.skills}
             />
           </div>
         </div>

@@ -6,15 +6,40 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
+import type { HoursMode, JobType, PayMode } from "@/lib/types";
 
 export function ApplyPanel({
   jobId,
   jobTitle,
   employerId,
+  employerName,
+  employerLogoUrl,
+  jobType,
+  location,
+  description,
+  payMode,
+  payMin,
+  payMax,
+  hoursMode,
+  hoursMin,
+  hoursMax,
+  skills,
 }: {
   jobId: string;
   jobTitle: string;
   employerId: string;
+  employerName: string;
+  employerLogoUrl: string | null;
+  jobType: JobType;
+  location: string;
+  description: string;
+  payMode?: PayMode;
+  payMin?: number | null;
+  payMax?: number | null;
+  hoursMode?: HoursMode;
+  hoursMin?: number | null;
+  hoursMax?: number | null;
+  skills: string[];
 }) {
   const { user, profile, loading } = useAuth();
   const [coverNote, setCoverNote] = useState("");
@@ -84,6 +109,18 @@ export function ApplyPanel({
         coverNote,
         status: "submitted",
         jobStatus: "published",
+        employerName,
+        employerLogoUrl,
+        jobType,
+        location,
+        description,
+        payMode: payMode ?? null,
+        payMin: payMin ?? null,
+        payMax: payMax ?? null,
+        hoursMode: hoursMode ?? null,
+        hoursMin: hoursMin ?? null,
+        hoursMax: hoursMax ?? null,
+        skills,
         createdAt: serverTimestamp(),
       });
       void notifyEmployerOfNewApplication(employerId, jobId, jobTitle, applicantName, coverNote);
