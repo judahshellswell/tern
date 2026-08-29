@@ -1,4 +1,4 @@
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { getClientFirestore } from "./firebase-client";
 import { isFreeEmailDomain, isUnder18, type UserProfile } from "./types";
 
@@ -66,4 +66,39 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
   const ref = doc(getClientFirestore(), "users", uid);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as UserProfile) : null;
+}
+
+// Lightweight edit path for an already-approved user fixing their own
+// details — a real updateDoc touching only content fields, never
+// verificationStatus. Deliberately separate from
+// createJobSeekerProfile/createEmployerProfile above, which setDoc a
+// full document (including verificationStatus: "pending") as part of
+// signup/reapply — reusing those here would silently reset an approved
+// account back to pending on every edit, which is exactly what this is
+// meant to avoid.
+export async function updateJobSeekerDetails(
+  uid: string,
+  details: { displayName: string; location: string },
+): Promise<void> {
+  await updateDoc(doc(getClientFirestore(), "users", uid), {
+    displayName: details.displayName,
+    location: details.location,
+  });
+}
+
+export async function updateEmployerDetails(
+  uid: string,
+  details: {
+    businessName: string;
+    registrationNumber: string;
+    location: string;
+    logoPath?: string;
+  },
+): Promise<void> {
+  await updateDoc(doc(getClientFirestore(), "users", uid), {
+    businessName: details.businessName,
+    registrationNumber: details.registrationNumber,
+    location: details.location,
+    ...(details.logoPath ? { logoPath: details.logoPath } : {}),
+  });
 }

@@ -69,6 +69,20 @@ service cloud.firestore {
           && resource.data.verificationStatus != "banned"
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["emailVerified"])
           && request.resource.data.emailVerified == true)
+        // Lightweight self-edit for an already-approved user fixing their
+        // own details (name/business name/location/logo) — saves
+        // immediately, no re-verification. Deliberately excludes
+        // idDocumentPath/dateOfBirth/guardianEmail (job seeker) — those
+        // stay reachable only via the reject/resubmit branch above, since
+        // re-verifying identity documents outside that flow has real
+        // safeguarding weight a simple typo fix shouldn't carry.
+        || (request.auth != null && request.auth.uid == uid
+          && resource.data.verificationStatus == "approved"
+          && request.resource.data.verificationStatus == "approved"
+          && ((resource.data.role == "job_seeker"
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "location"]))
+              || (resource.data.role == "employer"
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["businessName", "registrationNumber", "location", "logoPath"]))))
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["verificationStatus", "rejectionReason"]));

@@ -7,10 +7,12 @@ import { useAuth } from "@/components/auth/auth-provider";
 import { logOut } from "@/lib/auth-actions";
 import { useRouter } from "next/navigation";
 import { ReapplyForm } from "@/components/dashboard/reapply-form";
-import { APPLICATION_STATUS_LABELS, type Application, type UserProfile } from "@/lib/types";
+import { EditProfileForm } from "@/components/dashboard/edit-profile-form";
+import { APPLICATION_STATUS_LABELS, type Application, type EmployerProfile, type UserProfile } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where } from "firebase/firestore";
-import { getClientFirestore } from "@/lib/firebase-client";
+import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
+import { ref, getDownloadURL } from "firebase/storage";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
 
 export default function DashboardPage() {
@@ -106,11 +108,20 @@ export default function DashboardPage() {
           <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
             {profile.role === "job_seeker" ? "Job seeker" : "Employer"} dashboard
           </p>
-          <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight">
-            {profile.role === "job_seeker" ? profile.displayName : profile.businessName}
-          </h1>
+
+          {profile.role === "employer" ? (
+            <EmployerDetails profile={profile} />
+          ) : (
+            <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight">
+              {profile.displayName}
+            </h1>
+          )}
 
           <VerificationBanner profile={profile} />
+
+          {profile.verificationStatus === "approved" && (
+            <ProfileDetailsEditor profile={profile} />
+          )}
 
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
@@ -191,6 +202,52 @@ export default function DashboardPage() {
       </main>
       <SiteFooter />
     </>
+  );
+}
+
+function EmployerDetails({ profile }: { profile: EmployerProfile }) {
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDownloadURL(ref(getClientStorage(), profile.logoPath))
+      .then((url) => {
+        if (!cancelled) setLogoUrl(url);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [profile.logoPath]);
+
+  return (
+    <div className="mt-3 flex items-center gap-4">
+      <EmployerLogo url={logoUrl} name={profile.businessName} size={56} />
+      <div>
+        <h1 className="font-serif text-3xl font-semibold tracking-tight">{profile.businessName}</h1>
+        <p className="mt-1 text-sm text-granite">
+          {profile.registrationNumber} &middot; {profile.location}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function ProfileDetailsEditor({ profile }: { profile: UserProfile }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return <EditProfileForm profile={profile} onDone={() => setEditing(false)} />;
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      className="mt-4 text-sm font-medium text-tide underline hover:text-tide-bright cursor-pointer"
+    >
+      Edit details
+    </button>
   );
 }
 
