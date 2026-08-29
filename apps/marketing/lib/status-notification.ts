@@ -1,7 +1,9 @@
 import { getResend, FROM_ADDRESS } from "./resend";
 import type { ApplicationStatus } from "./types";
 
-type NotifiableStatus = Exclude<ApplicationStatus, "submitted">;
+// "withdrawn" is set by the applicant on themself, never something the
+// employer selects — no employer-driven email makes sense for it.
+type NotifiableStatus = Exclude<ApplicationStatus, "submitted" | "withdrawn">;
 
 const MESSAGE_FOR: Record<NotifiableStatus, { subject: (jobTitle: string) => string; line: string }> = {
   reviewed: {

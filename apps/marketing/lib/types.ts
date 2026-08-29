@@ -89,6 +89,11 @@ export type Job = {
   hoursMin?: number | null;
   hoursMax?: number | null;
   closeDate?: string | null; // ISO yyyy-mm-dd, informational only — never auto-closes anything
+  // Set once a "closing soon" reminder email has been sent to the
+  // employer for this closeDate — prevents the daily cron from resending
+  // if it ever runs more than once against the same date. Internal only,
+  // never rendered.
+  closingReminderSentAt?: string | null;
   skills: string[];
   status: "published" | "closed";
   createdAt: string;
@@ -99,7 +104,8 @@ export type ApplicationStatus =
   | "reviewed"
   | "shortlisted"
   | "rejected"
-  | "hired";
+  | "hired"
+  | "withdrawn";
 
 export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   submitted: "New",
@@ -107,6 +113,7 @@ export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
   shortlisted: "Shortlisted",
   rejected: "Rejected",
   hired: "Hired",
+  withdrawn: "Withdrawn",
 };
 
 export type Application = {

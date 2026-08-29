@@ -174,7 +174,18 @@ service cloud.firestore {
         && ((request.auth.uid == resource.data.employerId
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "jobStatus"]))
           || (isAdmin()
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["applicantBanned"])));
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["applicantBanned"]))
+          // The applicant can withdraw their own application — a one-way
+          // move to "withdrawn", never any other status, and never from
+          // "withdrawn" or "hired" (already terminal; once hired, that's
+          // a real-world conversation, not a self-service button). The
+          // application document is kept, not deleted, so it stays
+          // visible to the employer rather than silently vanishing.
+          || (request.auth.uid == resource.data.applicantId
+            && resource.data.status != "withdrawn"
+            && resource.data.status != "hired"
+            && request.resource.data.status == "withdrawn"
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])));
       allow delete: if false;
     }
 

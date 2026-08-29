@@ -25,7 +25,11 @@ export function formatHours(
 
 export function formatCloseDate(closeDate: string | null | undefined): string | null {
   if (!closeDate) return null;
-  return `Closes ${new Date(`${closeDate}T00:00:00`).toLocaleDateString("en-GB", {
+  const date = new Date(`${closeDate}T00:00:00`);
+  // Once the date has passed, stop showing it — the job itself stays
+  // open (no auto-close), this is purely a display-time hide.
+  if (date.getTime() < Date.now()) return null;
+  return `Closes ${date.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",

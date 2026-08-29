@@ -26,7 +26,11 @@ import {
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 import { notifyApplicantOfStatusChange } from "@/app/actions";
 
-const STATUS_OPTIONS = Object.keys(APPLICATION_STATUS_LABELS) as ApplicationStatus[];
+// "withdrawn" is a one-way action the applicant takes on themself — it
+// never appears as something the employer can select.
+const STATUS_OPTIONS = (Object.keys(APPLICATION_STATUS_LABELS) as ApplicationStatus[]).filter(
+  (status) => status !== "withdrawn",
+);
 
 export default function EmployerJobApplicantsPage({
   params,
@@ -92,7 +96,10 @@ function JobApplicants({ jobId }: { jobId: string }) {
 
   async function updateStatus(application: Application, status: ApplicationStatus) {
     await updateDoc(doc(getClientFirestore(), "applications", application.id), { status });
-    if (status !== "submitted") {
+    // "withdrawn" is never a value the employer's own dropdown can
+    // produce (STATUS_OPTIONS excludes it) — this check is for TypeScript,
+    // not a real runtime path.
+    if (status !== "submitted" && status !== "withdrawn") {
       void notifyApplicantOfStatusChange(application.applicantId, application.jobTitle, status);
     }
   }
@@ -238,19 +245,25 @@ function JobApplicants({ jobId }: { jobId: string }) {
                   >
                     {application.applicantName}
                   </Link>
-                  <select
-                    value={application.status}
-                    onChange={(e) =>
-                      updateStatus(application, e.target.value as ApplicationStatus)
-                    }
-                    className="rounded-full border border-border-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink outline-none transition-colors focus:border-tide"
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>
-                        {APPLICATION_STATUS_LABELS[status]}
-                      </option>
-                    ))}
-                  </select>
+                  {application.status === "withdrawn" ? (
+                    <span className="rounded-full bg-gorse-bg px-3 py-1.5 text-sm font-medium text-gorse">
+                      Withdrawn
+                    </span>
+                  ) : (
+                    <select
+                      value={application.status}
+                      onChange={(e) =>
+                        updateStatus(application, e.target.value as ApplicationStatus)
+                      }
+                      className="rounded-full border border-border-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink outline-none transition-colors focus:border-tide"
+                    >
+                      {STATUS_OPTIONS.map((status) => (
+                        <option key={status} value={status}>
+                          {APPLICATION_STATUS_LABELS[status]}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 {application.coverNote && (
                   <p className="mt-3 whitespace-pre-wrap text-sm text-ink">

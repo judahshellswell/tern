@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -42,6 +42,14 @@ export default function ApplicationDetailPage({
 function ApplicationDetail({ applicationId }: { applicationId: string }) {
   const { user, profile, loading } = useAuth();
   const [application, setApplication] = useState<Application | null | undefined>(undefined);
+  const [confirmingWithdraw, setConfirmingWithdraw] = useState(false);
+
+  async function withdraw() {
+    await updateDoc(doc(getClientFirestore(), "applications", applicationId), {
+      status: "withdrawn",
+    });
+    setConfirmingWithdraw(false);
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -129,7 +137,9 @@ function ApplicationDetail({ applicationId }: { applicationId: string }) {
 
       <div className="mt-10 rounded-2xl border border-border-strong bg-paper-raised p-6">
         <p className="mb-1.5 text-xs font-medium text-granite">Your application</p>
-        {application.jobStatus === "closed" ? (
+        {application.status === "withdrawn" ? (
+          <p className="font-semibold text-granite">Withdrawn</p>
+        ) : application.jobStatus === "closed" ? (
           <p className="font-semibold text-gorse">
             This job is no longer accepting applications and is currently being reviewed.
           </p>
@@ -138,6 +148,42 @@ function ApplicationDetail({ applicationId }: { applicationId: string }) {
         )}
         {application.coverNote && (
           <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{application.coverNote}</p>
+        )}
+
+        {application.status !== "withdrawn" && application.status !== "hired" && (
+          <div className="mt-4">
+            {!confirmingWithdraw ? (
+              <button
+                type="button"
+                onClick={() => setConfirmingWithdraw(true)}
+                className="text-sm font-medium text-gorse underline hover:opacity-80 cursor-pointer"
+              >
+                Withdraw application
+              </button>
+            ) : (
+              <div className="rounded-xl border border-border-strong bg-paper p-4">
+                <p className="text-sm text-ink">
+                  Are you sure? The employer will be able to see you withdrew.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={withdraw}
+                    className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 cursor-pointer"
+                  >
+                    Withdraw application
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingWithdraw(false)}
+                    className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-tide cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </>

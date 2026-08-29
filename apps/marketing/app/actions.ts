@@ -145,7 +145,7 @@ export async function notifyEmployerOfNewApplication(
 export async function notifyApplicantOfStatusChange(
   applicantId: string,
   jobTitle: string,
-  status: Exclude<ApplicationStatus, "submitted">,
+  status: Exclude<ApplicationStatus, "submitted" | "withdrawn">,
 ) {
   try {
     const snap = await getAdminFirestore().collection("users").doc(applicantId).get();
