@@ -2,11 +2,11 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { JOB_TYPE_LABELS, type PayMode, type PayType } from "@/lib/types";
+import { JOB_TYPE_LABELS, type HoursMode, type PayMode } from "@/lib/types";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { ApplyPanel } from "@/components/jobs/apply-panel";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
-import { formatCloseDate, formatPay } from "@/lib/format";
+import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 
 type Params = { id: string };
 
@@ -24,11 +24,12 @@ async function getJob(id: string) {
     description: data.description as string,
     type: data.type as keyof typeof JOB_TYPE_LABELS,
     location: data.location as string,
-    payType: data.payType as PayType,
     payMode: data.payMode as PayMode | undefined,
     payMin: (data.payMin as number | null | undefined) ?? null,
     payMax: (data.payMax as number | null | undefined) ?? null,
-    hoursPerWeek: (data.hoursPerWeek as string | null | undefined) ?? null,
+    hoursMode: data.hoursMode as HoursMode | undefined,
+    hoursMin: (data.hoursMin as number | null | undefined) ?? null,
+    hoursMax: (data.hoursMax as number | null | undefined) ?? null,
     closeDate: (data.closeDate as string | null | undefined) ?? null,
     skills: (data.skills as string[]) ?? [],
   };
@@ -75,7 +76,7 @@ export default async function JobDetailPage({
 
           <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-sm text-ink">
             <span>{job.location}</span>
-            {job.hoursPerWeek && <span>{job.hoursPerWeek} hrs/week</span>}
+            {formatHours(job) && <span>{formatHours(job)}</span>}
             <span className="tabular-nums">{formatPay(job)}</span>
             {formatCloseDate(job.closeDate) && <span>{formatCloseDate(job.closeDate)}</span>}
           </div>

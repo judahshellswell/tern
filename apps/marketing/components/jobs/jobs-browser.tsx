@@ -6,7 +6,7 @@ import Image from "next/image";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { JOB_TYPE_LABELS, type Job, type JobType } from "@/lib/types";
-import { formatCloseDate, formatPay } from "@/lib/format";
+import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 
 const ALL = "all" as const;
 
@@ -143,7 +143,7 @@ function JobCard({ job }: { job: Job }) {
 
       <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 font-mono text-xs text-granite-soft">
         <span>{job.location}</span>
-        {job.hoursPerWeek && <span>{job.hoursPerWeek} hrs/week</span>}
+        {formatHours(job) && <span>{formatHours(job)}</span>}
         <span className="tabular-nums">{formatPay(job)}</span>
         {formatCloseDate(job.closeDate) && <span>{formatCloseDate(job.closeDate)}</span>}
       </div>

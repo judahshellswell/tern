@@ -8,7 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { JOB_TYPE_LABELS, type Job } from "@/lib/types";
-import { formatPay } from "@/lib/format";
+import { formatHours, formatPay } from "@/lib/format";
 
 export default function EmployerJobsPage() {
   return (
@@ -99,6 +99,7 @@ function JobsList() {
               <p className="font-serif text-lg font-semibold">{job.title}</p>
               <p className="mt-0.5 text-sm text-granite">
                 {job.location} &middot; {formatPay(job)}
+                {formatHours(job) ? ` · ${formatHours(job)}` : ""}
               </p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">

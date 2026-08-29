@@ -60,11 +60,11 @@ export const JOB_TYPE_LABELS: Record<JobType, string> = {
   seasonal: "Seasonal",
 };
 
-export type PayType = "hourly" | "salary_pro_rata" | "fixed";
-
-// How pay is entered — a separate axis from PayType (hourly/salary/fixed
-// is the pay *basis*; this is how the number(s) are given).
+// How pay/hours are entered. Shared shape between the two — range (two
+// numbers), fixed (one number), or negotiable (no numbers, decided later
+// outside the platform, e.g. at interview).
 export type PayMode = "range" | "fixed" | "negotiable";
+export type HoursMode = "range" | "fixed" | "negotiable";
 
 export type Job = {
   id: string;
@@ -75,7 +75,6 @@ export type Job = {
   description: string;
   type: JobType;
   location: string;
-  payType: PayType;
   // Optional/absent on jobs posted before payMode existed — treat as
   // "range" at read time (that's what those docs structurally are).
   payMode?: PayMode;
@@ -83,7 +82,12 @@ export type Job = {
   payMin?: number | null;
   // range: the max; fixed/negotiable: null.
   payMax?: number | null;
-  hoursPerWeek?: string | null; // free text, e.g. "16-20"
+  // hoursMode has no legacy shape to preserve (hours were previously an
+  // optional free-text field) — always written going forward, but still
+  // optional in the type since jobs posted before this change have none.
+  hoursMode?: HoursMode;
+  hoursMin?: number | null;
+  hoursMax?: number | null;
   closeDate?: string | null; // ISO yyyy-mm-dd, informational only — never auto-closes anything
   skills: string[];
   status: "published" | "closed";
@@ -96,6 +100,14 @@ export type ApplicationStatus =
   | "shortlisted"
   | "rejected"
   | "hired";
+
+export const APPLICATION_STATUS_LABELS: Record<ApplicationStatus, string> = {
+  submitted: "New",
+  reviewed: "Reviewed",
+  shortlisted: "Shortlisted",
+  rejected: "Rejected",
+  hired: "Hired",
+};
 
 export type Application = {
   id: string;
@@ -113,6 +125,13 @@ export type Application = {
   applicantBanned: boolean;
   coverNote: string;
   status: ApplicationStatus;
+  // Denormalized from the job's own status at apply time, kept in sync
+  // when the employer closes/reopens the job. A job seeker's read access
+  // to a jobs/{id} doc is gated on status=="published" (or being the
+  // owning employer), so a closed job is otherwise invisible to the
+  // applicant at the rules level — this lets their own applications list
+  // still show "this job has closed" without needing to read the job.
+  jobStatus: "published" | "closed";
   createdAt: string;
 };
 

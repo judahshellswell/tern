@@ -10,24 +10,23 @@ import {
   query,
   updateDoc,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
-import { JOB_TYPE_LABELS, type Application, type ApplicationStatus, type Job } from "@/lib/types";
-import { formatCloseDate, formatPay } from "@/lib/format";
+import {
+  APPLICATION_STATUS_LABELS,
+  JOB_TYPE_LABELS,
+  type Application,
+  type ApplicationStatus,
+  type Job,
+} from "@/lib/types";
+import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 import { notifyApplicantOfStatusChange } from "@/app/actions";
 
-const STATUS_LABELS: Record<ApplicationStatus, string> = {
-  submitted: "New",
-  reviewed: "Reviewed",
-  shortlisted: "Shortlisted",
-  rejected: "Rejected",
-  hired: "Hired",
-};
-
-const STATUS_OPTIONS = Object.keys(STATUS_LABELS) as ApplicationStatus[];
+const STATUS_OPTIONS = Object.keys(APPLICATION_STATUS_LABELS) as ApplicationStatus[];
 
 export default function EmployerJobApplicantsPage({
   params,
@@ -100,9 +99,14 @@ function JobApplicants({ jobId }: { jobId: string }) {
 
   async function toggleJobStatus() {
     if (!job) return;
-    await updateDoc(doc(getClientFirestore(), "jobs", job.id), {
-      status: job.status === "published" ? "closed" : "published",
+    const newStatus = job.status === "published" ? "closed" : "published";
+    const db = getClientFirestore();
+    const batch = writeBatch(db);
+    batch.update(doc(db, "jobs", job.id), { status: newStatus });
+    (applications ?? []).forEach((application) => {
+      batch.update(doc(db, "applications", application.id), { jobStatus: newStatus });
     });
+    await batch.commit();
     setConfirmingClose(false);
   }
 
@@ -161,6 +165,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
       <p className="mt-1 text-granite">{job.location}</p>
       <p className="mt-1 font-mono text-sm text-granite-soft">
         {formatPay(job)}
+        {formatHours(job) ? ` · ${formatHours(job)}` : ""}
         {closeDateLabel ? ` · ${closeDateLabel}` : ""}
       </p>
 
@@ -242,7 +247,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
                   >
                     {STATUS_OPTIONS.map((status) => (
                       <option key={status} value={status}>
-                        {STATUS_LABELS[status]}
+                        {APPLICATION_STATUS_LABELS[status]}
                       </option>
                     ))}
                   </select>

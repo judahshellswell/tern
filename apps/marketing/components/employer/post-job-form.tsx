@@ -7,11 +7,11 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/fi
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import { JOB_TYPE_LABELS, type Job, type JobType, type PayMode, type PayType } from "@/lib/types";
+import { JOB_TYPE_LABELS, type HoursMode, type Job, type JobType, type PayMode } from "@/lib/types";
 
 const JOB_TYPES = Object.keys(JOB_TYPE_LABELS) as JobType[];
 
-const PAY_MODE_LABELS: Record<PayMode, string> = {
+const MODE_LABELS: Record<PayMode | HoursMode, string> = {
   range: "Range",
   fixed: "Fixed",
   negotiable: "Negotiable",
@@ -25,11 +25,12 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
   const [title, setTitle] = useState(initialJob?.title ?? "");
   const [description, setDescription] = useState(initialJob?.description ?? "");
   const [location, setLocation] = useState(initialJob?.location ?? "");
-  const [payType, setPayType] = useState<PayType>(initialJob?.payType ?? "hourly");
   const [payMode, setPayMode] = useState<PayMode>(initialJob?.payMode ?? "range");
   const [payMin, setPayMin] = useState(initialJob?.payMin != null ? String(initialJob.payMin) : "");
   const [payMax, setPayMax] = useState(initialJob?.payMax != null ? String(initialJob.payMax) : "");
-  const [hoursPerWeek, setHoursPerWeek] = useState(initialJob?.hoursPerWeek ?? "");
+  const [hoursMode, setHoursMode] = useState<HoursMode>(initialJob?.hoursMode ?? "range");
+  const [hoursMin, setHoursMin] = useState(initialJob?.hoursMin != null ? String(initialJob.hoursMin) : "");
+  const [hoursMax, setHoursMax] = useState(initialJob?.hoursMax != null ? String(initialJob.hoursMax) : "");
   const [closeDate, setCloseDate] = useState(initialJob?.closeDate ?? "");
   const [skillInput, setSkillInput] = useState("");
   const [skills, setSkills] = useState<string[]>(initialJob?.skills ?? []);
@@ -106,6 +107,23 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
       }
     }
 
+    let hMin: number | null = null;
+    let hMax: number | null = null;
+    if (hoursMode === "range") {
+      hMin = Number(hoursMin);
+      hMax = Number(hoursMax);
+      if (!Number.isFinite(hMin) || !Number.isFinite(hMax) || hMin <= 0 || hMax < hMin) {
+        setError("Enter a valid hours range.");
+        return;
+      }
+    } else if (hoursMode === "fixed") {
+      hMin = Number(hoursMin);
+      if (!Number.isFinite(hMin) || hMin <= 0) {
+        setError("Enter a valid number of hours.");
+        return;
+      }
+    }
+
     setIsPending(true);
     try {
       const content = {
@@ -113,11 +131,12 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
         description,
         type,
         location,
-        payType,
         payMode,
         payMin: min,
         payMax: max,
-        hoursPerWeek: hoursPerWeek.trim() || null,
+        hoursMode,
+        hoursMin: hMin,
+        hoursMax: hMax,
         closeDate: closeDate || null,
         skills,
       };
@@ -194,34 +213,69 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
 
         <TextField label="Location" value={location} onChange={setLocation} placeholder="St Helier, Jersey" />
 
-        <TextField
-          label="Hours per week (optional)"
-          value={hoursPerWeek}
-          onChange={setHoursPerWeek}
-          placeholder="16-20"
-          required={false}
-        />
-
         <div>
-          <label className="mb-2 block text-xs font-medium text-granite">Pay</label>
+          <label className="mb-2 block text-xs font-medium text-granite">Hours per week</label>
           <div className="flex flex-wrap gap-2">
-            {(["hourly", "salary_pro_rata", "fixed"] as PayType[]).map((pt) => (
+            {(["range", "fixed", "negotiable"] as HoursMode[]).map((hm) => (
               <button
-                key={pt}
+                key={hm}
                 type="button"
-                onClick={() => setPayType(pt)}
+                onClick={() => setHoursMode(hm)}
                 className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
-                  payType === pt
+                  hoursMode === hm
                     ? "border-tide bg-tide text-paper"
                     : "border-border-strong text-ink hover:border-tide"
                 }`}
               >
-                {pt === "hourly" ? "Hourly" : pt === "salary_pro_rata" ? "Salary (pro rata)" : "Fixed"}
+                {MODE_LABELS[hm]}
               </button>
             ))}
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-2">
+          {hoursMode === "range" && (
+            <div className="mt-3 flex gap-3">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                placeholder="Min hrs"
+                value={hoursMin}
+                onChange={(e) => setHoursMin(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                placeholder="Max hrs"
+                value={hoursMax}
+                onChange={(e) => setHoursMax(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+            </div>
+          )}
+
+          {hoursMode === "fixed" && (
+            <div className="mt-3">
+              <input
+                type="number"
+                min="0"
+                step="1"
+                required
+                placeholder="Hours per week"
+                value={hoursMin}
+                onChange={(e) => setHoursMin(e.target.value)}
+                className="w-full rounded-full border border-border-strong bg-paper px-5 py-3 text-[15px] text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
+              />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="mb-2 block text-xs font-medium text-granite">Pay</label>
+          <div className="flex flex-wrap gap-2">
             {(["range", "fixed", "negotiable"] as PayMode[]).map((pm) => (
               <button
                 key={pm}
@@ -233,7 +287,7 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
                     : "border-border-strong text-ink hover:border-tide"
                 }`}
               >
-                {PAY_MODE_LABELS[pm]}
+                {MODE_LABELS[pm]}
               </button>
             ))}
           </div>

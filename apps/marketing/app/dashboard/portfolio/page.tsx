@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { addPortfolioEntry, deletePortfolioEntry } from "@/lib/portfolio";
-import type { PortfolioEntry } from "@/lib/types";
+import { APPLICATION_STATUS_LABELS, type Application, type PortfolioEntry } from "@/lib/types";
 
 export default function PortfolioPage() {
   return (
@@ -24,6 +24,9 @@ export default function PortfolioPage() {
           </p>
           <div className="mt-8">
             <Portfolio />
+          </div>
+          <div className="mt-12">
+            <AppliedJobsSection />
           </div>
         </div>
       </main>
@@ -110,6 +113,80 @@ function Portfolio() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function AppliedJobsSection() {
+  const { user, profile, loading } = useAuth();
+
+  if (loading || !user || !profile || profile.role !== "job_seeker") {
+    return null;
+  }
+
+  return (
+    <>
+      <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Applied jobs</p>
+      <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight">Where you&rsquo;ve applied.</h2>
+      <div className="mt-6">
+        <AppliedJobs uid={user.uid} />
+      </div>
+    </>
+  );
+}
+
+function AppliedJobs({ uid }: { uid: string }) {
+  const [applications, setApplications] = useState<Application[] | null>(null);
+
+  useEffect(() => {
+    const q = query(
+      collection(getClientFirestore(), "applications"),
+      where("applicantId", "==", uid),
+      orderBy("createdAt", "desc"),
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Application));
+    });
+    return unsubscribe;
+  }, [uid]);
+
+  if (applications === null) {
+    return <p className="text-granite">Loading applications…</p>;
+  }
+
+  if (applications.length === 0) {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-paper-raised p-8 text-center">
+        <p className="font-serif text-lg font-semibold">No applications yet</p>
+        <p className="mt-1 text-sm text-granite">
+          <Link href="/jobs" className="font-medium text-tide underline hover:text-tide-bright">
+            Browse jobs
+          </Link>{" "}
+          to get started.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex max-h-[32rem] flex-col gap-4 overflow-y-auto pr-1">
+      {applications.map((application) => (
+        <div
+          key={application.id}
+          className="rounded-2xl border border-border-strong bg-paper-raised p-5"
+        >
+          <p className="font-serif text-lg font-semibold">{application.jobTitle}</p>
+          {application.jobStatus === "closed" ? (
+            <p className="mt-1 text-sm text-gorse">
+              This job is no longer accepting applications and is currently being reviewed.
+            </p>
+          ) : (
+            <p className="mt-1 text-sm text-granite">
+              {APPLICATION_STATUS_LABELS[application.status]}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

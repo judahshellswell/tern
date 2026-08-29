@@ -83,6 +83,7 @@ export function ApplyPanel({
         applicantBanned: false,
         coverNote,
         status: "submitted",
+        jobStatus: "published",
         createdAt: serverTimestamp(),
       });
       void notifyEmployerOfNewApplication(employerId, jobId, jobTitle, applicantName, coverNote);
