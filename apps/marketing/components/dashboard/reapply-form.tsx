@@ -1,12 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { isUnder18, isUnderMinimumAge, MINIMUM_AGE, type UserProfile } from "@/lib/types";
+import {
+  isUnder18,
+  isUnderMinimumAge,
+  JOB_TYPE_LABELS,
+  MINIMUM_AGE,
+  type JobType,
+  type UserProfile,
+} from "@/lib/types";
 import { createJobSeekerProfile, createEmployerProfile } from "@/lib/profile";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { notifyAdminOfSignup } from "@/app/actions";
 import { useAuth } from "@/components/auth/auth-provider";
+import { ParishSelect } from "@/components/ui/parish-select";
+
+const MAX_PREFERRED_JOB_TYPES = 3;
 
 export function ReapplyForm({
   profile,
@@ -32,6 +42,9 @@ export function ReapplyForm({
     profile.role === "employer" ? profile.registrationNumber : "",
   );
   const [location, setLocation] = useState(profile.location);
+  const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>(
+    profile.role === "job_seeker" ? (profile.preferredJobTypes ?? []) : [],
+  );
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -41,6 +54,16 @@ export function ReapplyForm({
 
   const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
   const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
+
+  function togglePreferredJobType(type: JobType) {
+    setPreferredJobTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((t) => t !== type)
+        : prev.length < MAX_PREFERRED_JOB_TYPES
+          ? [...prev, type]
+          : prev,
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,6 +93,7 @@ export function ReapplyForm({
             dateOfBirth,
             guardianEmail,
             location,
+            preferredJobTypes,
             idDocumentPath,
           },
           emailVerified,
@@ -130,7 +154,28 @@ export function ReapplyForm({
                 onChange={setGuardianEmail}
               />
             )}
-            <Field label="Location" value={location} onChange={setLocation} />
+            <ParishSelect id="reapply-location" label="Location" value={location} onChange={setLocation} />
+            <div>
+              <p className="mb-1.5 block text-xs font-medium text-granite">
+                Preferred job types (up to {MAX_PREFERRED_JOB_TYPES}, optional)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => togglePreferredJobType(type)}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                      preferredJobTypes.includes(type)
+                        ? "border-tide bg-tide text-paper"
+                        : "border-border-strong bg-paper-raised text-ink hover:border-tide"
+                    }`}
+                  >
+                    {JOB_TYPE_LABELS[type]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div>
               <label
                 htmlFor="reapply-id-upload"
@@ -173,7 +218,7 @@ export function ReapplyForm({
               value={registrationNumber}
               onChange={setRegistrationNumber}
             />
-            <Field label="Location" value={location} onChange={setLocation} />
+            <ParishSelect id="reapply-location" label="Location" value={location} onChange={setLocation} />
             <div>
               <label
                 htmlFor="reapply-logo-upload"

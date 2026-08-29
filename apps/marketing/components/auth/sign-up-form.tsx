@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { UserRole } from "@/lib/types";
-import { isUnder18, isUnderMinimumAge, MINIMUM_AGE } from "@/lib/types";
+import type { JobType, Parish, UserRole } from "@/lib/types";
+import { isUnder18, isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEmail } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
+import { ParishSelect } from "@/components/ui/parish-select";
+
+const MAX_PREFERRED_JOB_TYPES = 3;
 
 type Step = "role" | "account" | "details";
 
@@ -27,7 +30,8 @@ export function SignUpForm() {
   const [displayName, setDisplayName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [guardianEmail, setGuardianEmail] = useState("");
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState<Parish | "">("");
+  const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>([]);
   const [businessName, setBusinessName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
   const [idFile, setIdFile] = useState<File | null>(null);
@@ -41,6 +45,16 @@ export function SignUpForm() {
   function chooseRole(nextRole: UserRole) {
     setRole(nextRole);
     setStep("account");
+  }
+
+  function togglePreferredJobType(type: JobType) {
+    setPreferredJobTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((t) => t !== type)
+        : prev.length < MAX_PREFERRED_JOB_TYPES
+          ? [...prev, type]
+          : prev,
+    );
   }
 
   async function handleGoogleSignIn() {
@@ -97,6 +111,10 @@ export function SignUpForm() {
       setError("Please upload a logo to continue.");
       return;
     }
+    if (!location) {
+      setError("Please select a parish.");
+      return;
+    }
     setError("");
     setIsPending(true);
     try {
@@ -110,6 +128,7 @@ export function SignUpForm() {
             dateOfBirth,
             guardianEmail,
             location,
+            preferredJobTypes,
             idDocumentPath,
           },
           emailVerified,
@@ -283,12 +302,28 @@ export function SignUpForm() {
               </p>
             </>
           )}
-          <Field
-            label="Location"
-            value={location}
-            onChange={setLocation}
-            placeholder="St Helier, Jersey"
-          />
+          <ParishSelect id="signup-location" label="Location" value={location} onChange={setLocation} />
+          <div>
+            <p className="mb-1.5 block text-xs font-medium text-granite">
+              Preferred job types (up to {MAX_PREFERRED_JOB_TYPES}, optional)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => togglePreferredJobType(type)}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                    preferredJobTypes.includes(type)
+                      ? "border-tide bg-tide text-paper"
+                      : "border-border-strong bg-paper text-ink hover:border-tide"
+                  }`}
+                >
+                  {JOB_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          </div>
           <div>
             <label htmlFor="id-upload" className="mb-1.5 block text-xs font-medium text-granite">
               Photo ID
@@ -336,12 +371,7 @@ export function SignUpForm() {
             onChange={setRegistrationNumber}
             placeholder="JFSC registration number"
           />
-          <Field
-            label="Location"
-            value={location}
-            onChange={setLocation}
-            placeholder="St Helier, Jersey"
-          />
+          <ParishSelect id="signup-location" label="Location" value={location} onChange={setLocation} />
           <div>
             <label htmlFor="logo-upload" className="mb-1.5 block text-xs font-medium text-granite">
               Logo
@@ -389,6 +419,7 @@ export function SignUpForm() {
         type="submit"
         disabled={
           isPending ||
+          !location ||
           (role === "job_seeker" && (underMinimumAge || !idFile)) ||
           (role === "employer" && !logoFile)
         }

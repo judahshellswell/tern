@@ -5,14 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { collection, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
-import { JOB_TYPE_LABELS, type Job, type JobType } from "@/lib/types";
+import { JOB_TYPE_LABELS, PARISHES, type Job, type JobType, type Parish } from "@/lib/types";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
+import { useAuth } from "@/components/auth/auth-provider";
 
 const ALL = "all" as const;
 
 export function JobsBrowser() {
+  const { profile } = useAuth();
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [typeFilter, setTypeFilter] = useState<JobType | typeof ALL>(ALL);
+  const [parishFilter, setParishFilter] = useState<Parish[]>([]);
 
   useEffect(() => {
     const q = query(
@@ -26,11 +29,41 @@ export function JobsBrowser() {
     return unsubscribe;
   }, []);
 
+  function toggleParish(parish: Parish) {
+    setParishFilter((prev) =>
+      prev.includes(parish) ? prev.filter((p) => p !== parish) : [...prev, parish],
+    );
+  }
+
   const filtered = useMemo(() => {
     if (!jobs) return null;
-    if (typeFilter === ALL) return jobs;
-    return jobs.filter((job) => job.type === typeFilter);
-  }, [jobs, typeFilter]);
+    return jobs.filter(
+      (job) =>
+        (typeFilter === ALL || job.type === typeFilter) &&
+        (parishFilter.length === 0 || parishFilter.includes(job.location)),
+    );
+  }, [jobs, typeFilter, parishFilter]);
+
+  // For a logged-in job seeker, boost jobs matching their preferred job
+  // types or home parish toward the top — a relevance signal, not a hard
+  // filter. Everyone else (logged out, or an employer) sees the plain
+  // createdAt-desc order the query already produced. Array.prototype.sort
+  // is spec-guaranteed stable, so within each relevance tier the existing
+  // createdAt-desc order is preserved "for free".
+  const ordered = useMemo(() => {
+    if (!filtered) return null;
+    if (!profile || profile.role !== "job_seeker") return filtered;
+    const preferredTypes = new Set(profile.preferredJobTypes ?? []);
+    const homeParish = profile.location;
+    function tier(job: Job): number {
+      const typeMatch = preferredTypes.has(job.type);
+      const parishMatch = job.location === homeParish;
+      if (typeMatch && parishMatch) return 0;
+      if (typeMatch || parishMatch) return 1;
+      return 2;
+    }
+    return [...filtered].sort((a, b) => tier(a) - tier(b));
+  }, [filtered, profile]);
 
   return (
     <div>
@@ -46,19 +79,30 @@ export function JobsBrowser() {
         ))}
       </div>
 
-      <div className="mt-8 flex flex-col gap-4">
-        {filtered === null && <p className="text-granite">Loading jobs…</p>}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {PARISHES.map((parish) => (
+          <FilterChip
+            key={parish}
+            label={parish}
+            active={parishFilter.includes(parish)}
+            onClick={() => toggleParish(parish)}
+          />
+        ))}
+      </div>
 
-        {filtered !== null && filtered.length === 0 && (
+      <div className="mt-8 flex flex-col gap-4">
+        {ordered === null && <p className="text-granite">Loading jobs…</p>}
+
+        {ordered !== null && ordered.length === 0 && (
           <div className="rounded-2xl border border-border-strong bg-paper-raised p-8 text-center">
             <p className="font-serif text-lg font-semibold">No jobs match yet</p>
             <p className="mt-1 text-sm text-granite">
-              Check back soon, or try a different job type.
+              Check back soon, or try a different job type or parish.
             </p>
           </div>
         )}
 
-        {filtered?.map((job) => <JobCard key={job.id} job={job} />)}
+        {ordered?.map((job) => <JobCard key={job.id} job={job} />)}
       </div>
     </div>
   );

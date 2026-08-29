@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getApplicantProfileForEmployer, type ApplicantProfileForEmployer } from "@/app/actions";
+import { ReportButton } from "@/components/reports/report-button";
 
 export default function ApplicantProfilePage({
   params,
@@ -108,6 +109,15 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-8">
+        <ReportButton
+          reporterRole="employer"
+          reportedId={applicantId}
+          reportedRole="job_seeker"
+          reportedName={result.displayName}
+        />
       </div>
     </>
   );

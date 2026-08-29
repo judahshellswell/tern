@@ -1,19 +1,20 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { getClientFirestore } from "./firebase-client";
-import { isFreeEmailDomain, isUnder18, type UserProfile } from "./types";
+import { isFreeEmailDomain, isUnder18, type JobType, type Parish, type UserProfile } from "./types";
 
 export type JobSeekerSignupDetails = {
   displayName: string;
   dateOfBirth: string;
   guardianEmail: string;
-  location: string;
+  location: Parish;
+  preferredJobTypes: JobType[];
   idDocumentPath: string;
 };
 
 export type EmployerSignupDetails = {
   businessName: string;
   registrationNumber: string;
-  location: string;
+  location: Parish;
   logoPath: string;
 };
 
@@ -33,6 +34,7 @@ export async function createJobSeekerProfile(
     dateOfBirth: details.dateOfBirth,
     guardianEmail: under18 ? details.guardianEmail : null,
     location: details.location,
+    preferredJobTypes: details.preferredJobTypes,
     idDocumentPath: details.idDocumentPath,
     verificationStatus: "pending",
     emailVerified,
@@ -78,11 +80,12 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
 // meant to avoid.
 export async function updateJobSeekerDetails(
   uid: string,
-  details: { displayName: string; location: string },
+  details: { displayName: string; location: Parish; preferredJobTypes: JobType[] },
 ): Promise<void> {
   await updateDoc(doc(getClientFirestore(), "users", uid), {
     displayName: details.displayName,
     location: details.location,
+    preferredJobTypes: details.preferredJobTypes,
   });
 }
 
@@ -91,7 +94,7 @@ export async function updateEmployerDetails(
   details: {
     businessName: string;
     registrationNumber: string;
-    location: string;
+    location: Parish;
     logoPath?: string;
   },
 ): Promise<void> {

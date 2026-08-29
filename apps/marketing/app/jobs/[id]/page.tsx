@@ -2,10 +2,12 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
-import { JOB_TYPE_LABELS, type HoursMode, type PayMode } from "@/lib/types";
+import { JOB_TYPE_LABELS, type HoursMode, type Parish, type PayMode } from "@/lib/types";
 import { getAdminFirestore } from "@/lib/firebase-admin";
+import { incrementJobViewCount } from "@/app/actions";
 import { ApplyPanel } from "@/components/jobs/apply-panel";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
+import { ReportButton } from "@/components/reports/report-button";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 
 type Params = { id: string };
@@ -23,7 +25,7 @@ async function getJob(id: string) {
     title: data.title as string,
     description: data.description as string,
     type: data.type as keyof typeof JOB_TYPE_LABELS,
-    location: data.location as string,
+    location: data.location as Parish,
     payMode: data.payMode as PayMode | undefined,
     payMin: (data.payMin as number | null | undefined) ?? null,
     payMax: (data.payMax as number | null | undefined) ?? null,
@@ -58,6 +60,8 @@ export default async function JobDetailPage({
   const job = await getJob(id);
   if (!job) notFound();
 
+  void incrementJobViewCount(id);
+
   return (
     <>
       <SiteHeader />
@@ -72,6 +76,15 @@ export default async function JobDetailPage({
           <div className="mt-3 flex items-center gap-3">
             <EmployerLogo url={job.employerLogoUrl} name={job.employerName} size={48} />
             <p className="text-lg text-granite">{job.employerName}</p>
+          </div>
+
+          <div className="mt-2">
+            <ReportButton
+              reporterRole="job_seeker"
+              reportedId={job.employerId}
+              reportedRole="employer"
+              reportedName={job.employerName}
+            />
           </div>
 
           <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-sm text-ink">

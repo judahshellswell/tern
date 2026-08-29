@@ -7,7 +7,8 @@ import { addDoc, collection, doc, serverTimestamp, updateDoc } from "firebase/fi
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import { JOB_TYPE_LABELS, type HoursMode, type Job, type JobType, type PayMode } from "@/lib/types";
+import { JOB_TYPE_LABELS, type HoursMode, type Job, type JobType, type Parish, type PayMode } from "@/lib/types";
+import { ParishSelect } from "@/components/ui/parish-select";
 
 const JOB_TYPES = Object.keys(JOB_TYPE_LABELS) as JobType[];
 
@@ -24,7 +25,7 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
   const [type, setType] = useState<JobType>(initialJob?.type ?? "part_time");
   const [title, setTitle] = useState(initialJob?.title ?? "");
   const [description, setDescription] = useState(initialJob?.description ?? "");
-  const [location, setLocation] = useState(initialJob?.location ?? "");
+  const [location, setLocation] = useState<Parish | "">(initialJob?.location ?? "");
   const [payMode, setPayMode] = useState<PayMode>(initialJob?.payMode ?? "range");
   const [payMin, setPayMin] = useState(initialJob?.payMin != null ? String(initialJob.payMin) : "");
   const [payMax, setPayMax] = useState(initialJob?.payMax != null ? String(initialJob.payMax) : "");
@@ -89,6 +90,11 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    if (!location) {
+      setError("Please select a parish.");
+      return;
+    }
 
     let min: number | null = null;
     let max: number | null = null;
@@ -155,6 +161,7 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
           employerName: (profile as { businessName: string }).businessName,
           employerLogoUrl,
           status: "published",
+          viewCount: 0,
           createdAt: serverTimestamp(),
         });
         router.push("/jobs");
@@ -211,7 +218,7 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
           />
         </div>
 
-        <TextField label="Location" value={location} onChange={setLocation} placeholder="St Helier, Jersey" />
+        <ParishSelect id="job-location" label="Location" value={location} onChange={setLocation} />
 
         <div>
           <label className="mb-2 block text-xs font-medium text-granite">Hours per week</label>
@@ -392,7 +399,7 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
 
         <button
           type="submit"
-          disabled={isPending}
+          disabled={isPending || !location}
           className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer"
         >
           {isPending

@@ -2,6 +2,25 @@ export type UserRole = "job_seeker" | "employer";
 
 export type VerificationStatus = "pending" | "approved" | "rejected" | "banned";
 
+// Jersey's 12 parishes — the fixed location vocabulary for jobs and
+// profiles alike. Replaces free-text location everywhere.
+export const PARISHES = [
+  "Grouville",
+  "St. Brelade",
+  "St. Clement",
+  "St. Helier",
+  "St. John",
+  "St. Lawrence",
+  "St. Martin",
+  "St. Mary",
+  "St. Ouen",
+  "St. Peter",
+  "St. Saviour",
+  "Trinity",
+] as const;
+
+export type Parish = (typeof PARISHES)[number];
+
 export type JobSeekerProfile = {
   role: "job_seeker";
   uid: string;
@@ -9,7 +28,11 @@ export type JobSeekerProfile = {
   displayName: string;
   dateOfBirth: string; // ISO date, e.g. "2009-04-12"
   guardianEmail: string | null; // required if under 18 at signup
-  location: string;
+  location: Parish;
+  // Up to 3 job types the seeker is most interested in, set at signup and
+  // editable afterward. Used only to boost matching jobs toward the top
+  // of /jobs — never a hard filter, so an empty array is a valid state.
+  preferredJobTypes?: JobType[];
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
@@ -27,7 +50,7 @@ export type EmployerProfile = {
   email: string;
   businessName: string;
   registrationNumber: string;
-  location: string;
+  location: Parish;
   logoPath: string; // Storage path, e.g. "employer-logos/{uid}/logo.jpg"
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
@@ -74,7 +97,7 @@ export type Job = {
   title: string;
   description: string;
   type: JobType;
-  location: string;
+  location: Parish;
   // Optional/absent on jobs posted before payMode existed — treat as
   // "range" at read time (that's what those docs structurally are).
   payMode?: PayMode;
@@ -96,6 +119,11 @@ export type Job = {
   closingReminderSentAt?: string | null;
   skills: string[];
   status: "published" | "closed";
+  // Incremented once per public job-detail page load. No dedup/unique
+  // visitor logic — intentionally a thin signal, not real analytics.
+  // Optional since jobs posted before this field existed have none —
+  // read as `job.viewCount ?? 0`.
+  viewCount?: number;
   createdAt: string;
 };
 
@@ -149,7 +177,7 @@ export type Application = {
   employerName: string;
   employerLogoUrl: string | null;
   jobType: JobType;
-  location: string;
+  location: Parish;
   description: string;
   payMode?: PayMode;
   payMin?: number | null;
@@ -200,3 +228,19 @@ export function isFreeEmailDomain(email: string): boolean {
   const domain = email.split("@")[1]?.toLowerCase().trim();
   return !!domain && FREE_EMAIL_DOMAINS.has(domain);
 }
+
+export type ReportStatus = "open" | "dismissed" | "actioned";
+
+export type Report = {
+  id: string;
+  reporterId: string;
+  reporterRole: UserRole;
+  reportedId: string;
+  reportedRole: UserRole;
+  reportedName: string; // denormalized snapshot for admin display
+  reason: string;
+  status: ReportStatus;
+  createdAt: string;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null; // admin email, for an audit trail
+};

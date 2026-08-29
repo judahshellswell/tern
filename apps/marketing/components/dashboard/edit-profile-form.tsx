@@ -1,9 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import type { UserProfile } from "@/lib/types";
+import { JOB_TYPE_LABELS, type JobType, type UserProfile } from "@/lib/types";
 import { updateJobSeekerDetails, updateEmployerDetails } from "@/lib/profile";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
+import { ParishSelect } from "@/components/ui/parish-select";
+
+const MAX_PREFERRED_JOB_TYPES = 3;
 
 export function EditProfileForm({
   profile,
@@ -22,10 +25,23 @@ export function EditProfileForm({
     profile.role === "employer" ? profile.registrationNumber : "",
   );
   const [location, setLocation] = useState(profile.location);
+  const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>(
+    profile.role === "job_seeker" ? (profile.preferredJobTypes ?? []) : [],
+  );
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileError, setLogoFileError] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
+
+  function togglePreferredJobType(type: JobType) {
+    setPreferredJobTypes((prev) =>
+      prev.includes(type)
+        ? prev.filter((t) => t !== type)
+        : prev.length < MAX_PREFERRED_JOB_TYPES
+          ? [...prev, type]
+          : prev,
+    );
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +49,7 @@ export function EditProfileForm({
     setIsPending(true);
     try {
       if (profile.role === "job_seeker") {
-        await updateJobSeekerDetails(profile.uid, { displayName, location });
+        await updateJobSeekerDetails(profile.uid, { displayName, location, preferredJobTypes });
       } else {
         const logoPath = logoFile ? (await uploadEmployerLogo(profile.uid, logoFile)).path : undefined;
         await updateEmployerDetails(profile.uid, {
@@ -69,7 +85,31 @@ export function EditProfileForm({
             />
           </>
         )}
-        <Field label="Location" value={location} onChange={setLocation} />
+        <ParishSelect id="edit-profile-location" label="Location" value={location} onChange={setLocation} />
+
+        {profile.role === "job_seeker" && (
+          <div>
+            <p className="mb-1.5 block text-xs font-medium text-granite">
+              Preferred job types (up to {MAX_PREFERRED_JOB_TYPES}, optional)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(JOB_TYPE_LABELS) as JobType[]).map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => togglePreferredJobType(type)}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                    preferredJobTypes.includes(type)
+                      ? "border-tide bg-tide text-paper"
+                      : "border-border-strong bg-paper-raised text-ink hover:border-tide"
+                  }`}
+                >
+                  {JOB_TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {profile.role === "employer" && (
           <div>

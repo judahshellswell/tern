@@ -31,6 +31,16 @@ service cloud.firestore {
       ) <= request.time - duration.value(5844, 'd');
     }
 
+    // Jersey's 12 parishes — matches lib/types.ts PARISHES exactly. Kept
+    // manually in sync (same convention as isAdmin() vs ADMIN_EMAILS).
+    function isValidParish(location) {
+      return location in [
+        "Grouville", "St. Brelade", "St. Clement", "St. Helier", "St. John",
+        "St. Lawrence", "St. Martin", "St. Mary", "St. Ouen", "St. Peter",
+        "St. Saviour", "Trinity"
+      ];
+    }
+
     // --- Users ---
     // A user can read and create their own profile. They can update their
     // own details while pending or rejected (edit-and-resubmit resets
@@ -44,10 +54,13 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.verificationStatus == "pending"
+        && isValidParish(request.resource.data.location)
         && (request.resource.data.role != "job_seeker"
           || (meetsMinimumAge(request.resource.data.dateOfBirth)
             && request.resource.data.idDocumentPath is string
-            && request.resource.data.idDocumentPath.size() > 0))
+            && request.resource.data.idDocumentPath.size() > 0
+            && (!("preferredJobTypes" in request.resource.data)
+              || request.resource.data.preferredJobTypes.size() <= 3)))
         && (request.resource.data.role != "employer"
           || (request.resource.data.logoPath is string
             && request.resource.data.logoPath.size() > 0));
@@ -57,10 +70,13 @@ service cloud.firestore {
           && resource.data.verificationStatus != "approved"
           && request.resource.data.verificationStatus == "pending"
           && !("rejectionReason" in request.resource.data)
+          && isValidParish(request.resource.data.location)
           && (request.resource.data.role != "job_seeker"
             || (meetsMinimumAge(request.resource.data.dateOfBirth)
               && request.resource.data.idDocumentPath is string
-              && request.resource.data.idDocumentPath.size() > 0))
+              && request.resource.data.idDocumentPath.size() > 0
+              && (!("preferredJobTypes" in request.resource.data)
+                || request.resource.data.preferredJobTypes.size() <= 3)))
           && (request.resource.data.role != "employer"
             || (request.resource.data.logoPath is string
               && request.resource.data.logoPath.size() > 0)))
@@ -79,8 +95,11 @@ service cloud.firestore {
         || (request.auth != null && request.auth.uid == uid
           && resource.data.verificationStatus == "approved"
           && request.resource.data.verificationStatus == "approved"
+          && isValidParish(request.resource.data.location)
           && ((resource.data.role == "job_seeker"
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "location"]))
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "location", "preferredJobTypes"])
+                && (!("preferredJobTypes" in request.resource.data)
+                  || request.resource.data.preferredJobTypes.size() <= 3))
               || (resource.data.role == "employer"
                 && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["businessName", "registrationNumber", "location", "logoPath"]))))
         || (isAdmin()
@@ -134,10 +153,12 @@ service cloud.firestore {
         || (request.auth != null && request.auth.uid == resource.data.employerId);
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.employerId
-        && isApprovedEmployer(request.auth.uid);
+        && isApprovedEmployer(request.auth.uid)
+        && isValidParish(request.resource.data.location);
       allow update: if isAdmin()
         || (request.auth != null
           && request.auth.uid == resource.data.employerId
+          && isValidParish(request.resource.data.location)
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["title", "description", "type", "location",
                       "payMode", "payMin", "payMax", "hoursMode",
@@ -156,11 +177,10 @@ service cloud.firestore {
     // get() — Firestore can only prove a list query safe using fields the
     // query itself filters on, so a cross-document get() keyed off
     // resource.data breaks the employer's applicants list query even when
-    // it would otherwise be allowed. Admin can flip it to true — the
-    // extension point for a future "ban an already-approved user" action.
-    // No such action exists yet (the admin queue only bans pending
-    // accounts, which can't have applications), so this field is always
-    // false today. Only the employer can update its status.
+    // it would otherwise be allowed. Admin can flip it to true — used by
+    // banUserAccount (app/actions.ts) when an approved job seeker is
+    // banned, to cascade the ban onto their existing applications so
+    // employers stop seeing them. Only the employer can update its status.
     match /applications/{applicationId} {
       allow read: if request.auth != null
         && ((request.auth.uid == resource.data.applicantId)
@@ -186,6 +206,29 @@ service cloud.firestore {
             && resource.data.status != "hired"
             && request.resource.data.status == "withdrawn"
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])));
+      allow delete: if false;
+    }
+
+    // --- Reports ---
+    // Either role can report the other (job seeker reports an employer,
+    // employer reports a job seeker). A report needs a real authenticated
+    // reporter, a real reported user, and can't target yourself. The
+    // reporter can read back their own reports; only the admin can list
+    // all of them or update one (to dismiss it or mark it actioned after
+    // banning the reported user via banUserAccount). Reports are a
+    // permanent record — never deleted, never rewritten beyond status.
+    match /reports/{reportId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.reporterId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if request.auth != null
+        && request.auth.uid == request.resource.data.reporterId
+        && request.resource.data.reporterId != request.resource.data.reportedId
+        && request.resource.data.status == "open"
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.reportedId));
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["status", "resolvedAt", "resolvedBy"]);
       allow delete: if false;
     }
 

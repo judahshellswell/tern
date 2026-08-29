@@ -1,5 +1,6 @@
 "use server";
 
+import { FieldValue } from "firebase-admin/firestore";
 import { addToWaitlist, type WaitlistRole } from "@/lib/waitlist";
 import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
@@ -7,8 +8,8 @@ import { sendRejectionNotification } from "@/lib/rejection-notification";
 import { sendBanNotification } from "@/lib/ban-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
-import { getAdminFirestore } from "@/lib/firebase-admin";
-import type { ApplicationStatus } from "@/lib/types";
+import { getAdminFirestore, getAdminAuth } from "@/lib/firebase-admin";
+import type { ApplicationStatus, Parish } from "@/lib/types";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -91,17 +92,6 @@ export async function notifyRejection(userEmail: string, name: string, reason: s
   }
 }
 
-// Same best-effort contract as notifyRejection.
-export async function notifyBan(userEmail: string, name: string, reason: string) {
-  try {
-    await sendBanNotification({ userEmail, name, reason });
-    return { ok: true } as const;
-  } catch (err) {
-    console.error("Failed to send ban notification:", err);
-    return { ok: false } as const;
-  }
-}
-
 // Called right after an application is written to Firestore. The
 // employer's email/business name comes from server-truth (their own
 // profile doc via the Admin SDK) rather than anything the client passes
@@ -163,7 +153,7 @@ export async function notifyApplicantOfStatusChange(
 
 export type ApplicantProfileForEmployer = {
   displayName: string;
-  location: string;
+  location: Parish;
   portfolio: { id: string; title: string; description: string }[];
 };
 
@@ -217,4 +207,92 @@ export async function getApplicantProfileForEmployer(
       description: d.data().description,
     })),
   };
+}
+
+// The single ban entry point — used by the pending-verification queue's
+// existing ban button and by the "all approved users" and "reports"
+// admin queues. Looks up role/name/email itself from server truth
+// (never trusts a caller-supplied name/email) and cascades the ban
+// across every collection that denormalizes something about this user:
+// closes an employer's live jobs (and marks their applications'
+// jobStatus closed to match), flags a job seeker's existing applications
+// applicantBanned so employers stop seeing them, and disables the
+// Firebase Auth account so they can't log back in. Firestore is updated
+// first — that alone is enough to lock the account out at the app level
+// via existing rules and the dashboard's suspended-account screen — so a
+// failure disabling Auth afterward is logged but doesn't undo the ban.
+export async function banUserAccount(
+  uid: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  const userSnap = await db.collection("users").doc(uid).get();
+  const profile = userSnap.data();
+  if (!profile) {
+    return { ok: false, error: "User not found." };
+  }
+  const name = profile.role === "job_seeker" ? profile.displayName : profile.businessName;
+
+  await db.collection("users").doc(uid).update({
+    verificationStatus: "banned",
+    rejectionReason: reason,
+  });
+
+  if (profile.role === "employer") {
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("employerId", "==", uid)
+      .where("status", "==", "published")
+      .get();
+    if (!jobsSnap.empty) {
+      const batch = db.batch();
+      jobsSnap.docs.forEach((jobDoc) => batch.update(jobDoc.ref, { status: "closed" }));
+      await batch.commit();
+    }
+
+    const applicationsSnap = await db.collection("applications").where("employerId", "==", uid).get();
+    if (!applicationsSnap.empty) {
+      const batch = db.batch();
+      applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { jobStatus: "closed" }));
+      await batch.commit();
+    }
+  }
+
+  if (profile.role === "job_seeker") {
+    const applicationsSnap = await db.collection("applications").where("applicantId", "==", uid).get();
+    if (!applicationsSnap.empty) {
+      const batch = db.batch();
+      applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { applicantBanned: true }));
+      await batch.commit();
+    }
+  }
+
+  try {
+    await getAdminAuth().updateUser(uid, { disabled: true });
+  } catch (err) {
+    console.error(`Failed to disable Auth account for ${uid}:`, err);
+  }
+
+  try {
+    await sendBanNotification({ userEmail: profile.email, name, reason });
+  } catch (err) {
+    console.error("Failed to send ban notification:", err);
+  }
+
+  return { ok: true };
+}
+
+// Best-effort — a failed increment should never break the job detail
+// page render. Called once per real page load (see app/jobs/[id]/page.tsx),
+// never from inside the metadata-generating fetch, to avoid double-counting.
+export async function incrementJobViewCount(jobId: string): Promise<void> {
+  try {
+    await getAdminFirestore()
+      .collection("jobs")
+      .doc(jobId)
+      .update({ viewCount: FieldValue.increment(1) });
+  } catch (err) {
+    console.error(`Failed to increment view count for job ${jobId}:`, err);
+  }
 }

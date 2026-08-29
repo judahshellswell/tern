@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   collection,
@@ -103,6 +103,21 @@ function JobApplicants({ jobId }: { jobId: string }) {
       void notifyApplicantOfStatusChange(application.applicantId, application.jobTitle, status);
     }
   }
+
+  const statusCounts = useMemo(() => {
+    const counts: Record<ApplicationStatus, number> = {
+      submitted: 0,
+      reviewed: 0,
+      shortlisted: 0,
+      rejected: 0,
+      hired: 0,
+      withdrawn: 0,
+    };
+    (applications ?? []).forEach((application) => {
+      counts[application.status]++;
+    });
+    return counts;
+  }, [applications]);
 
   async function toggleJobStatus() {
     if (!job) return;
@@ -221,6 +236,16 @@ function JobApplicants({ jobId }: { jobId: string }) {
         </div>
       )}
 
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatTile label="Views" value={job.viewCount ?? 0} />
+        <StatTile label="New" value={statusCounts.submitted} />
+        <StatTile label="Reviewed" value={statusCounts.reviewed} />
+        <StatTile label="Shortlisted" value={statusCounts.shortlisted} />
+        <StatTile label="Hired" value={statusCounts.hired} />
+        <StatTile label="Rejected" value={statusCounts.rejected} />
+        <StatTile label="Withdrawn" value={statusCounts.withdrawn} />
+      </div>
+
       <div className="mt-8">
         {applications === null && <p className="text-granite">Loading applicants…</p>}
 
@@ -276,5 +301,14 @@ function JobApplicants({ jobId }: { jobId: string }) {
         )}
       </div>
     </>
+  );
+}
+
+function StatTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border-strong bg-paper-raised px-4 py-3 text-center">
+      <p className="font-serif text-2xl font-semibold tabular-nums">{value}</p>
+      <p className="text-xs text-granite-soft">{label}</p>
+    </div>
   );
 }

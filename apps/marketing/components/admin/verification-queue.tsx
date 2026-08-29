@@ -1,42 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
 import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/firestore";
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
-import { isAdminEmail } from "@/lib/admin";
-import { useAuth } from "@/components/auth/auth-provider";
 import type { UserProfile } from "@/lib/types";
-import { notifyRejection, notifyBan } from "@/app/actions";
-
-export function AdminVerificationQueue() {
-  const { user, loading: authLoading } = useAuth();
-
-  if (authLoading) {
-    return <p className="text-granite">Loading…</p>;
-  }
-
-  if (!user || !isAdminEmail(user.email)) {
-    return (
-      <div className="rounded-2xl border border-border-strong bg-paper-raised p-6">
-        <p className="text-granite">
-          You need to be logged in as an admin to see this page.
-        </p>
-        <Link href="/log-in" className="mt-3 inline-block font-medium text-tide underline">
-          Log in
-        </Link>
-      </div>
-    );
-  }
-
-  return <Queue />;
-}
+import { notifyRejection, banUserAccount } from "@/app/actions";
+import { ReasonForm } from "@/components/admin/reason-form";
 
 type Action = { uid: string; kind: "reject" | "ban" };
 
-function Queue() {
+export function AdminVerificationQueue() {
   const [pending, setPending] = useState<UserProfile[] | null>(null);
   const [activeAction, setActiveAction] = useState<Action | null>(null);
 
@@ -68,9 +43,7 @@ function Queue() {
   }
 
   async function ban(profile: UserProfile, reason: string) {
-    const userRef = doc(getClientFirestore(), "users", profile.uid);
-    await updateDoc(userRef, { verificationStatus: "banned", rejectionReason: reason });
-    void notifyBan(profile.email, profileName(profile), reason);
+    await banUserAccount(profile.uid, reason);
     setActiveAction(null);
   }
 
@@ -233,75 +206,6 @@ function IdDocumentPreview({ path, label }: { path: string; label: string }) {
           />
         </a>
       )}
-    </div>
-  );
-}
-
-const REASON_FORM_COPY = {
-  reject: {
-    label:
-      "Why are you rejecting this? They'll see this message and it'll be emailed to them. They can update their details and resubmit.",
-    placeholder:
-      "e.g. The ID you uploaded doesn't match the name on your profile — please resubmit with a clear photo.",
-    confirmLabel: "Confirm rejection",
-    submittingLabel: "Rejecting…",
-  },
-  ban: {
-    label:
-      "Why are you banning this account? They'll see this message and it'll be emailed to them. Banned accounts can never resubmit.",
-    placeholder: "e.g. The uploaded ID appears to be fabricated.",
-    confirmLabel: "Confirm ban",
-    submittingLabel: "Banning…",
-  },
-} as const;
-
-function ReasonForm({
-  kind,
-  onCancel,
-  onConfirm,
-}: {
-  kind: "reject" | "ban";
-  onCancel: () => void;
-  onConfirm: (reason: string) => void;
-}) {
-  const [reason, setReason] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const copy = REASON_FORM_COPY[kind];
-
-  return (
-    <div className="mt-4 rounded-xl border border-border-strong bg-paper p-4">
-      <label htmlFor="reason-input" className="mb-1.5 block text-xs font-medium text-granite">
-        {copy.label}
-      </label>
-      <textarea
-        id="reason-input"
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        rows={3}
-        placeholder={copy.placeholder}
-        className="w-full rounded-lg border border-border-strong bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
-      />
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={!reason.trim() || isSubmitting}
-          onClick={async () => {
-            setIsSubmitting(true);
-            await onConfirm(reason.trim());
-          }}
-          className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
-        >
-          {isSubmitting ? copy.submittingLabel : copy.confirmLabel}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-tide cursor-pointer"
-        >
-          Cancel
-        </button>
-      </div>
     </div>
   );
 }

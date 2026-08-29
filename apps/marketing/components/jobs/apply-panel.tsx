@@ -6,7 +6,7 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
-import type { HoursMode, JobType, PayMode } from "@/lib/types";
+import type { HoursMode, JobType, Parish, PayMode } from "@/lib/types";
 
 export function ApplyPanel({
   jobId,
@@ -31,7 +31,7 @@ export function ApplyPanel({
   employerName: string;
   employerLogoUrl: string | null;
   jobType: JobType;
-  location: string;
+  location: Parish;
   description: string;
   payMode?: PayMode;
   payMin?: number | null;
