@@ -276,21 +276,279 @@ export type Notification = {
 };
 
 // One-time gate between admin approval and a job seeker's first
-// application — 3 short scenario questions, graded by Claude. Meant to
-// catch obviously disengaged submissions, not to be a bar for
-// eloquence — see lib/readiness-grading.ts for the actual grading
-// instructions.
-export const READINESS_GATE_QUESTIONS = [
-  "You're scheduled for a shift tomorrow, but something's come up and you don't think you can make it. What do you do?",
-  "Your manager asks you to do a task at work, but you don't understand exactly what they want. How do you handle it?",
-  "You make a mistake at work — maybe you're late, or you get something wrong in front of a customer. What happens next, from you?",
-] as const;
+// application — a ~30 minute course of free-text and multiple-choice
+// questions, grouped into sections. Free-text answers are graded by
+// Claude (see lib/readiness-grading.ts); multiple-choice answers are
+// scored deterministically against lib/readiness-answer-key.ts (kept
+// out of any client bundle so the correct answers are never
+// discoverable via devtools). Meant to catch obviously disengaged
+// submissions, not to be a bar for eloquence or perfect recall.
+export type ReadinessItemType = "free_text" | "multiple_choice";
+// Future: | "video" — this union is designed so a new item type is
+// additive (new member + new renderer branch), never a breaking change
+// to existing content or submitted data.
+
+export type ReadinessFreeTextItem = {
+  type: "free_text";
+  id: string; // stable key, e.g. "reliability-1" — joins answers back to content across edits
+  prompt: string;
+};
+
+export type ReadinessMultipleChoiceItem = {
+  type: "multiple_choice";
+  id: string;
+  prompt: string;
+  options: string[]; // rendered in array order; correct answer lives only in readiness-answer-key.ts
+};
+
+export type ReadinessItem = ReadinessFreeTextItem | ReadinessMultipleChoiceItem;
+
+export type ReadinessSection = {
+  id: string;
+  title: string;
+  items: ReadinessItem[];
+};
+
+// The hardcoded course content, client-safe (no correct answers here —
+// see lib/readiness-answer-key.ts, which is never imported by a "use
+// client" file).
+export const READINESS_COURSE: ReadinessSection[] = [
+  {
+    id: "reliability",
+    title: "Reliability",
+    items: [
+      {
+        type: "free_text",
+        id: "reliability-1",
+        prompt:
+          "You're scheduled for a shift tomorrow, but something's come up and you don't think you can make it. What do you do?",
+      },
+      {
+        type: "multiple_choice",
+        id: "reliability-2",
+        prompt: "If you're going to be late for a shift, the best thing to do is:",
+        options: [
+          "Text a friend who also works there and ask them to pass it on",
+          "Contact your manager directly, as early as possible",
+          "Just arrive as soon as you can and explain when you get there",
+          "Wait and see if anyone notices",
+        ],
+      },
+      {
+        type: "multiple_choice",
+        id: "reliability-3",
+        prompt: "How much notice should you try to give if you need to cancel a shift?",
+        options: [
+          "None — it's fine to cancel last minute if something comes up",
+          "A few hours' notice is always enough",
+          "As much notice as possible, ideally as soon as you know",
+          "It doesn't matter as long as you show up next time",
+        ],
+      },
+      {
+        type: "free_text",
+        id: "reliability-4",
+        prompt:
+          "Why do you think showing up on time and doing what you said you'd do matters, even for a part-time or casual job?",
+      },
+    ],
+  },
+  {
+    id: "communication",
+    title: "Communication",
+    items: [
+      {
+        type: "free_text",
+        id: "communication-1",
+        prompt:
+          "Your manager asks you to do a task at work, but you don't understand exactly what they want. How do you handle it?",
+      },
+      {
+        type: "multiple_choice",
+        id: "communication-2",
+        prompt: "If a customer asks you a question you don't know the answer to, the best response is:",
+        options: [
+          "Guess, so you don't look unhelpful",
+          "Tell them you don't know and walk away",
+          "Say you're not sure, then find someone who can help or find out",
+          "Ignore the question and move on to the next customer",
+        ],
+      },
+      {
+        type: "multiple_choice",
+        id: "communication-3",
+        prompt: "A coworker is clearly annoyed with you but hasn't said why. What's the best first step?",
+        options: [
+          "Ask them directly, calmly, if everything's okay",
+          "Avoid them until it blows over",
+          "Complain about them to another coworker",
+          "Assume it's not your problem and ignore it",
+        ],
+      },
+      {
+        type: "free_text",
+        id: "communication-4",
+        prompt:
+          "Describe a time (at work, school, or anywhere) you had to tell someone something they didn't want to hear. How did you handle it?",
+      },
+    ],
+  },
+  {
+    id: "mistakes",
+    title: "Handling mistakes",
+    items: [
+      {
+        type: "free_text",
+        id: "mistakes-1",
+        prompt:
+          "You make a mistake at work — maybe you're late, or you get something wrong in front of a customer. What happens next, from you?",
+      },
+      {
+        type: "multiple_choice",
+        id: "mistakes-2",
+        prompt:
+          "You realise you've made a mistake that a customer hasn't noticed yet but will affect their order/experience. What should you do?",
+        options: [
+          "Say nothing, since they haven't noticed",
+          "Tell someone straight away so it can be fixed",
+          "Wait and see if it becomes a problem first",
+          "Fix it quietly yourself without telling anyone, even if you're not sure how",
+        ],
+      },
+      {
+        type: "multiple_choice",
+        id: "mistakes-3",
+        prompt: "Your manager points out a mistake you made. The best response is:",
+        options: [
+          "Explain all the reasons it wasn't really your fault",
+          "Get defensive — nobody likes being corrected",
+          "Acknowledge it, and ask what you should do differently next time",
+          "Say nothing and hope it isn't mentioned again",
+        ],
+      },
+      {
+        type: "free_text",
+        id: "mistakes-4",
+        prompt:
+          "Everyone messes up sometimes. What matters more to you — never making a mistake, or how you deal with one when it happens? Why?",
+      },
+    ],
+  },
+  {
+    id: "professionalism",
+    title: "Professionalism & attitude",
+    items: [
+      {
+        type: "multiple_choice",
+        id: "professionalism-1",
+        prompt: "You're having a bad day before your shift starts. The best approach is:",
+        options: [
+          "Let your mood show — people should understand",
+          "Try to leave it at the door and stay professional during the shift",
+          "Tell every customer about it so they know why you seem off",
+          "Call in sick even though you're not actually ill",
+        ],
+      },
+      {
+        type: "multiple_choice",
+        id: "professionalism-2",
+        prompt: "Which of these is the best sign someone is a reliable coworker?",
+        options: [
+          "They're the loudest, most talkative person on shift",
+          "They always know more than everyone else",
+          "You can count on them to do what they say, even when no one's watching",
+          "They never ask questions",
+        ],
+      },
+      {
+        type: "free_text",
+        id: "professionalism-3",
+        prompt:
+          "What does \"bringing real value\" to a job mean to you, beyond just turning up and doing the minimum required?",
+      },
+      {
+        type: "multiple_choice",
+        id: "professionalism-4",
+        prompt: "If you disagree with a decision your manager makes, the best approach is usually to:",
+        options: [
+          "Do it your own way anyway, without saying anything",
+          "Complain to coworkers instead of raising it",
+          "Raise your concern respectfully, then follow the decision once it's made",
+          "Refuse until they change their mind",
+        ],
+      },
+    ],
+  },
+  {
+    id: "judgment",
+    title: "Customer & workplace judgment",
+    items: [
+      {
+        type: "multiple_choice",
+        id: "judgment-1",
+        prompt: "A customer is rude to you for something that isn't your fault. The best response is:",
+        options: [
+          "Match their tone — they started it",
+          "Ignore them completely",
+          "Stay calm and professional, and get a manager involved if it escalates",
+          "Argue back until they apologise",
+        ],
+      },
+      {
+        type: "multiple_choice",
+        id: "judgment-2",
+        prompt: "You finish your tasks early during a shift with time to spare. What should you do?",
+        options: [
+          "Take an unscheduled break since your work is done",
+          "Ask your manager or a coworker if there's anything else that needs doing",
+          "Wait quietly until your shift ends",
+          "Leave early since there's nothing left to do",
+        ],
+      },
+      {
+        type: "free_text",
+        id: "judgment-3",
+        prompt: "Describe what \"good customer service\" looks like to you, in your own words.",
+      },
+      {
+        type: "multiple_choice",
+        id: "judgment-4",
+        prompt: "If you see a coworker struggling to keep up during a busy shift, the best thing to do is:",
+        options: [
+          "Focus on your own tasks — it's not your job to help",
+          "Offer to help if you're able to",
+          "Mention it to a manager as a complaint about them",
+          "Ignore it, they'll figure it out",
+        ],
+      },
+    ],
+  },
+];
+
+// More than this many multiple-choice answers wrong (across the whole
+// course) routes the submission to admin review, independent of the AI
+// verdict on the free-text answers — a couple of misclicks or debatable
+// answers shouldn't flag someone on their own, but a pattern of wrong
+// answers is worth a human look.
+export const READINESS_MC_MAX_WRONG = 2;
 
 export type ReadinessGateOutcome = "passed" | "flagged" | "rejected";
 
-export type ReadinessGateAnswer = {
-  question: string; // snapshot of the question text at submission time
-  answer: string;
+export type ReadinessItemAnswer = {
+  itemId: string;
+  prompt: string; // snapshot of the question text at submission time
+  type: ReadinessItemType;
+  // free_text:
+  answer?: string;
+  // multiple_choice:
+  selectedIndex?: number;
+  correct?: boolean; // computed at grading time, deterministic
+};
+
+export type ReadinessSectionResult = {
+  sectionId: string;
+  sectionTitle: string; // snapshot
+  answers: ReadinessItemAnswer[];
 };
 
 // Lives at the single fixed path users/{uid}/readinessGate/submission —
@@ -300,8 +558,10 @@ export type ReadinessGateAnswer = {
 // Firestore rule read "has this user passed" with one get(), since
 // rules can't run queries.
 export type ReadinessGateSubmission = {
-  answers: [ReadinessGateAnswer, ReadinessGateAnswer, ReadinessGateAnswer];
-  aiVerdict: "pass" | "flag";
+  sections: ReadinessSectionResult[];
+  mcCorrectCount: number;
+  mcTotalCount: number;
+  aiVerdict: "pass" | "flag"; // AI verdict on the free-text answers only
   aiReasoning: string;
   outcome: ReadinessGateOutcome;
   adminReviewedBy?: string; // admin email, set only when outcome is set by an admin

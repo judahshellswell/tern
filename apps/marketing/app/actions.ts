@@ -11,7 +11,11 @@ import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
 import { ADMIN_EMAILS } from "@/lib/admin";
-import { writeReadinessGateSubmission, applyReadinessGateReview } from "@/lib/readiness-gate";
+import {
+  writeReadinessGateSubmission,
+  applyReadinessGateReview,
+  type ReadinessRawAnswers,
+} from "@/lib/readiness-gate";
 import type { ApplicationStatus, NotificationKind, Parish, Report, UserRole } from "@/lib/types";
 
 // Best-effort in-app notification write, mirroring an email already
@@ -180,10 +184,10 @@ export async function notifyApplicantOfStatusChange(
 // guards the (best-effort) notification sends afterward.
 export async function submitReadinessGate(
   uid: string,
-  answers: [string, string, string],
+  rawAnswers: ReadinessRawAnswers,
 ): Promise<{ ok: true; outcome: "passed" | "flagged" } | { ok: false; error: string }> {
   const db = getAdminFirestore();
-  const result = await writeReadinessGateSubmission(db, uid, answers);
+  const result = await writeReadinessGateSubmission(db, uid, rawAnswers);
   if (!result.ok) return result;
 
   try {

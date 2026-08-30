@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
-import type { ReadinessGateSubmission } from "@/lib/types";
+import { READINESS_MC_MAX_WRONG, type ReadinessGateSubmission } from "@/lib/types";
 import { reviewReadinessGate } from "@/app/actions";
 import { ReasonForm } from "@/components/admin/reason-form";
 
@@ -65,46 +65,82 @@ export function ReadinessQueue() {
 
   return (
     <div className="flex flex-col gap-4">
-      {flagged.map((submission) => (
-        <div key={submission.uid} className="rounded-2xl border border-border-strong bg-paper-raised p-5">
-          <p className="font-mono text-[10px] uppercase tracking-wide text-granite-soft">
-            Flagged by AI &middot; {submission.aiReasoning}
-          </p>
-          <dl className="mt-3 flex flex-col gap-3">
-            {submission.answers.map((qa, i) => (
-              <div key={i}>
-                <dt className="text-xs text-granite-soft">{qa.question}</dt>
-                <dd className="mt-0.5 text-sm text-ink">{qa.answer}</dd>
-              </div>
-            ))}
-          </dl>
+      {flagged.map((submission) => {
+        const mcWrong = submission.mcTotalCount - submission.mcCorrectCount;
+        const mcFlag = submission.mcCorrectCount < submission.mcTotalCount - READINESS_MC_MAX_WRONG;
 
-          {activeReject === submission.uid ? (
-            <ReasonForm
-              kind="readiness_reject"
-              onCancel={() => setActiveReject(null)}
-              onConfirm={(reason) => reject(submission.uid, reason)}
-            />
-          ) : (
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={() => approve(submission.uid)}
-                className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
-              >
-                Approve
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveReject(submission.uid)}
-                className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-gorse hover:text-gorse cursor-pointer"
-              >
-                Reject
-              </button>
+        return (
+          <div key={submission.uid} className="rounded-2xl border border-border-strong bg-paper-raised p-5">
+            <div className="flex flex-col gap-1">
+              {mcFlag && (
+                <p className="font-mono text-[10px] uppercase tracking-wide text-gorse">
+                  Flagged — {mcWrong} of {submission.mcTotalCount} multiple-choice wrong (threshold:{" "}
+                  {READINESS_MC_MAX_WRONG})
+                </p>
+              )}
+              {submission.aiVerdict === "flag" && (
+                <p className="font-mono text-[10px] uppercase tracking-wide text-gorse">
+                  Flagged by AI &middot; {submission.aiReasoning}
+                </p>
+              )}
+              {!mcFlag && (
+                <p className="text-xs text-granite-soft">
+                  Multiple choice: {submission.mcCorrectCount}/{submission.mcTotalCount} correct
+                </p>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+
+            <div className="mt-3 flex flex-col gap-4">
+              {submission.sections.map((section) => (
+                <div key={section.sectionId}>
+                  <p className="font-serif text-sm font-semibold text-ink">{section.sectionTitle}</p>
+                  <dl className="mt-2 flex flex-col gap-3">
+                    {section.answers.map((a) => (
+                      <div key={a.itemId}>
+                        <dt className="text-xs text-granite-soft">{a.prompt}</dt>
+                        {a.type === "free_text" ? (
+                          <dd className="mt-0.5 text-sm text-ink">{a.answer}</dd>
+                        ) : (
+                          <dd
+                            className={`mt-0.5 text-sm ${a.correct ? "text-ink" : "font-semibold text-gorse"}`}
+                          >
+                            {a.correct ? "Correct" : "Incorrect"}
+                          </dd>
+                        )}
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              ))}
+            </div>
+
+            {activeReject === submission.uid ? (
+              <ReasonForm
+                kind="readiness_reject"
+                onCancel={() => setActiveReject(null)}
+                onConfirm={(reason) => reject(submission.uid, reason)}
+              />
+            ) : (
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => approve(submission.uid)}
+                  className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveReject(submission.uid)}
+                  className="rounded-full border border-border-strong px-4 py-2 text-sm font-semibold text-ink transition-colors hover:border-gorse hover:text-gorse cursor-pointer"
+                >
+                  Reject
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
