@@ -52,12 +52,20 @@ export async function getAdminAuth(): Promise<Auth> {
 
 let cachedAdminUid: string | null = null;
 
-// Resolves ADMIN_EMAILS[0] to a Firebase Auth uid, cached per server
-// process (cold starts re-resolve — cheap, a single getUserByEmail
-// call). Used to write in-app notifications for the admin, since
-// notifications are stored per-uid and the admin is only known by
-// email everywhere else in this app.
+// The admin's Firebase uid, used to write in-app notifications (stored
+// per-uid, while the admin is otherwise only known by email everywhere
+// else in this app). Prefers the ADMIN_UID env var — a plain constant,
+// resolved once and never touching firebase-admin/auth — because that
+// module's dynamic import (see getAdminAuth above) has proven unreliable
+// on Vercel: it works from some routes' serverless function bundles and
+// not others, for reasons that have resisted a clean fix twice now.
+// Falls back to the old dynamic getUserByEmail lookup only if the env
+// var isn't set, so this still works (when the import cooperates)
+// without requiring the env var everywhere this is used.
 export async function getAdminUid(): Promise<string | null> {
+  const envUid = process.env.ADMIN_UID;
+  if (envUid) return envUid;
+
   if (cachedAdminUid) return cachedAdminUid;
   try {
     const authInstance = await getAdminAuth();

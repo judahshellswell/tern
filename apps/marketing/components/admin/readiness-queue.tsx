@@ -12,22 +12,35 @@ type FlaggedSubmission = ReadinessGateSubmission & { uid: string };
 export function ReadinessQueue() {
   const [flagged, setFlagged] = useState<FlaggedSubmission[] | null>(null);
   const [activeReject, setActiveReject] = useState<string | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const q = query(
       collectionGroup(getClientFirestore(), "readinessGate"),
       where("outcome", "==", "flagged"),
     );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setFlagged(
-        snap.docs.map((d) => ({
-          ...(d.data() as ReadinessGateSubmission),
-          uid: d.ref.parent.parent!.id,
-        })),
-      );
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snap) => {
+        setError("");
+        setFlagged(
+          snap.docs.map((d) => ({
+            ...(d.data() as ReadinessGateSubmission),
+            uid: d.ref.parent.parent!.id,
+          })),
+        );
+      },
+      (err) => {
+        console.error("Readiness queue listener failed:", err);
+        setError("Couldn't load the readiness queue. Please refresh the page.");
+      },
+    );
     return unsubscribe;
   }, []);
+
+  if (error) {
+    return <p className="text-gorse">{error}</p>;
+  }
 
   async function approve(uid: string) {
     await reviewReadinessGate(uid, "approve");
