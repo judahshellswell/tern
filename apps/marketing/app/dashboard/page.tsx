@@ -185,7 +185,7 @@ export default function DashboardPage() {
                   >
                     <p className="font-serif text-lg font-semibold">Readiness check</p>
                     <p className="mt-1 text-sm text-granite">
-                      Answer 3 quick questions before you start applying.
+                      A short course (about 30 minutes) before you start applying.
                     </p>
                   </Link>
                 )}

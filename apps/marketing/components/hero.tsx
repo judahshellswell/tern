@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useAuth } from "./auth/auth-provider";
 
 export function Hero() {
+  const { user, loading } = useAuth();
+
   return (
     <section className="relative overflow-hidden border-b border-border">
       <TideBackdrop />
@@ -20,18 +25,29 @@ export function Hero() {
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link
-              href="/sign-up"
-              className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
-            >
-              Sign up
-            </Link>
-            <Link
-              href="/log-in"
-              className="text-sm font-medium text-ink transition-colors hover:text-tide"
-            >
-              Log in
-            </Link>
+            {!loading && user ? (
+              <Link
+                href="/dashboard"
+                className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/sign-up"
+                  className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+                >
+                  Sign up
+                </Link>
+                <Link
+                  href="/log-in"
+                  className="text-sm font-medium text-ink transition-colors hover:text-tide"
+                >
+                  Log in
+                </Link>
+              </>
+            )}
           </div>
 
           <dl className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm">
