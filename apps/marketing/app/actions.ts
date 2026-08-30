@@ -269,7 +269,8 @@ export async function banUserAccount(
   }
 
   try {
-    await getAdminAuth().updateUser(uid, { disabled: true });
+    const auth = await getAdminAuth();
+    await auth.updateUser(uid, { disabled: true });
   } catch (err) {
     console.error(`Failed to disable Auth account for ${uid}:`, err);
   }

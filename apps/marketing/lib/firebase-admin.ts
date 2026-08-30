@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
-import { getAuth, type Auth } from "firebase-admin/auth";
+import type { Auth } from "firebase-admin/auth";
 
 function getAdminApp(): App {
   const existing = getApps();
@@ -32,8 +32,18 @@ export function getAdminFirestore(): Firestore {
 
 let auth: Auth | null = null;
 
-export function getAdminAuth(): Auth {
+// Dynamically imported — firebase-admin/auth pulls in jwks-rsa, which
+// requires the ESM-only "jose" package via a CommonJS require() that
+// Vercel's Node runtime can't resolve. A top-level static import of
+// firebase-admin/auth broke every route importing this module (even
+// ones that only ever call getAdminFirestore()), since it loaded at
+// import time regardless of whether Auth was actually used. Deferring
+// it to only load inside this function keeps that failure scoped to
+// the one thing that actually needs it — banUserAccount's Auth-disable
+// step — instead of taking down /jobs/[id] and every other page.
+export async function getAdminAuth(): Promise<Auth> {
   if (!auth) {
+    const { getAuth } = await import("firebase-admin/auth");
     auth = getAuth(getAdminApp());
   }
   return auth;
