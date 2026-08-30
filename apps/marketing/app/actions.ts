@@ -10,6 +10,8 @@ import { notifyAdminOfReport } from "@/lib/report-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
+import { ADMIN_EMAILS } from "@/lib/admin";
+import { writeReadinessGateSubmission, applyReadinessGateReview } from "@/lib/readiness-gate";
 import type { ApplicationStatus, NotificationKind, Parish, Report, UserRole } from "@/lib/types";
 
 // Best-effort in-app notification write, mirroring an email already
@@ -167,6 +169,98 @@ export async function notifyApplicantOfStatusChange(
     console.error("Failed to send status change notification:", err);
     return { ok: false } as const;
   }
+}
+
+// Called from the readiness-gate submission form. Unlike the other
+// notify* actions in this file, the AI grading call itself is NOT a
+// best-effort side effect — it's the actual state transition (pass vs.
+// flag), so a grading failure is already handled inside
+// writeReadinessGateSubmission (falls back to "flagged", never
+// silently drops the submission). This action's own try/catch only
+// guards the (best-effort) notification sends afterward.
+export async function submitReadinessGate(
+  uid: string,
+  answers: [string, string, string],
+): Promise<{ ok: true; outcome: "passed" | "flagged" } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+  const result = await writeReadinessGateSubmission(db, uid, answers);
+  if (!result.ok) return result;
+
+  try {
+    const userSnap = await db.collection("users").doc(uid).get();
+    const displayName = userSnap.data()?.displayName ?? "";
+
+    if (result.outcome === "passed") {
+      await writeNotification(
+        uid,
+        "readiness_gate_passed",
+        "You're ready to apply",
+        "Nice work — your answers were approved. You can apply to jobs now.",
+        "/jobs",
+      );
+    } else {
+      await writeNotification(
+        uid,
+        "readiness_gate_flagged",
+        "Your answers are being reviewed",
+        "We're taking a closer look at your answers before you can start applying — we'll be in touch soon.",
+        "/dashboard",
+      );
+      const adminUid = await getAdminUid();
+      if (adminUid) {
+        await writeNotification(
+          adminUid,
+          "admin_readiness_review_pending",
+          "Readiness answers flagged for review",
+          `${displayName || uid} — flagged by AI screening`,
+          "/admin",
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Failed to send readiness gate notification:", err);
+  }
+
+  return result;
+}
+
+// Admin action for the flagged-review queue. Approve overrides the AI
+// flag and passes the seeker; reject requires a reason (reusing
+// ReasonForm's "readiness_reject" kind) and lets them resubmit
+// immediately via submitReadinessGate again — no cooldown, matching
+// the ID-verification reject-and-resubmit pattern.
+export async function reviewReadinessGate(
+  uid: string,
+  decision: "approve" | "reject",
+  reason?: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+  const result = await applyReadinessGateReview(db, uid, decision, reason, ADMIN_EMAILS[0]);
+  if (!result.ok) return result;
+
+  try {
+    if (decision === "approve") {
+      await writeNotification(
+        uid,
+        "readiness_gate_passed",
+        "You're ready to apply",
+        "An admin reviewed your answers and approved them — you can apply to jobs now.",
+        "/jobs",
+      );
+    } else {
+      await writeNotification(
+        uid,
+        "readiness_gate_rejected",
+        "Your answers weren't approved",
+        reason ?? "",
+        "/dashboard",
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send readiness gate review notification:", err);
+  }
+
+  return result;
 }
 
 export type ApplicantProfileForEmployer = {

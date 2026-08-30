@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
-import type { HoursMode, JobType, Parish, PayMode } from "@/lib/types";
+import type { HoursMode, JobType, Parish, PayMode, ReadinessGateOutcome } from "@/lib/types";
 
 export function ApplyPanel({
   jobId,
@@ -46,6 +46,18 @@ export function ApplyPanel({
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [readinessOutcome, setReadinessOutcome] = useState<ReadinessGateOutcome | "loading" | "none">(
+    "loading",
+  );
+
+  useEffect(() => {
+    if (!user) return;
+    const ref = doc(getClientFirestore(), "users", user.uid, "readinessGate", "submission");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      setReadinessOutcome(snap.exists() ? (snap.data().outcome as ReadinessGateOutcome) : "none");
+    });
+    return unsubscribe;
+  }, [user]);
 
   if (loading) {
     return <p className="text-granite">Loading…</p>;
@@ -88,6 +100,30 @@ export function ApplyPanel({
         <p className="mt-1 text-sm text-granite">
           You&rsquo;ll be able to apply once you&rsquo;re verified.
         </p>
+      </div>
+    );
+  }
+
+  if (readinessOutcome === "loading") {
+    return <p className="text-granite">Loading…</p>;
+  }
+
+  if (readinessOutcome !== "passed") {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">
+        <p className="font-semibold text-gorse">
+          {readinessOutcome === "flagged" ? "Readiness answers under review" : "Complete your readiness check"}
+        </p>
+        <p className="mt-1 text-sm text-granite">
+          {readinessOutcome === "flagged"
+            ? "We're reviewing your answers — you'll be able to apply once that's done."
+            : "Answer 3 quick questions before you can apply to jobs."}
+        </p>
+        {readinessOutcome !== "flagged" && (
+          <Link href="/dashboard/readiness" className="mt-3 inline-block font-medium text-tide underline">
+            Go to readiness check
+          </Link>
+        )}
       </div>
     );
   }

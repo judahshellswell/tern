@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export type ReasonFormKind = "reject" | "ban" | "report" | "suspend";
+export type ReasonFormKind = "reject" | "ban" | "report" | "suspend" | "readiness_reject";
 
 export const REASON_FORM_COPY: Record<
   ReasonFormKind,
@@ -35,6 +35,14 @@ export const REASON_FORM_COPY: Record<
     placeholder: "e.g. Under review after multiple reports — investigating before deciding next steps.",
     confirmLabel: "Confirm suspension",
     submittingLabel: "Suspending…",
+  },
+  readiness_reject: {
+    label:
+      "Why are you rejecting these answers? They'll see this message and can resubmit right away.",
+    placeholder:
+      "e.g. These answers don't really engage with the questions — give them another shot with more specific detail.",
+    confirmLabel: "Confirm rejection",
+    submittingLabel: "Rejecting…",
   },
 };
 

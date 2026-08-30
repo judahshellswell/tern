@@ -259,7 +259,11 @@ export type NotificationKind =
   | "application_status_changed"
   | "job_closing_soon"
   | "admin_signup_pending"
-  | "admin_report_filed";
+  | "admin_report_filed"
+  | "readiness_gate_passed"
+  | "readiness_gate_flagged"
+  | "readiness_gate_rejected"
+  | "admin_readiness_review_pending";
 
 export type Notification = {
   id: string;
@@ -269,4 +273,40 @@ export type Notification = {
   link: string; // in-app relative path, e.g. "/employer/jobs/abc123"
   read: boolean;
   createdAt: string;
+};
+
+// One-time gate between admin approval and a job seeker's first
+// application — 3 short scenario questions, graded by Claude. Meant to
+// catch obviously disengaged submissions, not to be a bar for
+// eloquence — see lib/readiness-grading.ts for the actual grading
+// instructions.
+export const READINESS_GATE_QUESTIONS = [
+  "You're scheduled for a shift tomorrow, but something's come up and you don't think you can make it. What do you do?",
+  "Your manager asks you to do a task at work, but you don't understand exactly what they want. How do you handle it?",
+  "You make a mistake at work — maybe you're late, or you get something wrong in front of a customer. What happens next, from you?",
+] as const;
+
+export type ReadinessGateOutcome = "passed" | "flagged" | "rejected";
+
+export type ReadinessGateAnswer = {
+  question: string; // snapshot of the question text at submission time
+  answer: string;
+};
+
+// Lives at the single fixed path users/{uid}/readinessGate/submission —
+// written only by the submitReadinessGate/reviewReadinessGate server
+// actions (app/actions.ts), never directly by the client. A predictable
+// single-doc path is what lets both the apply-gate check and the
+// Firestore rule read "has this user passed" with one get(), since
+// rules can't run queries.
+export type ReadinessGateSubmission = {
+  answers: [ReadinessGateAnswer, ReadinessGateAnswer, ReadinessGateAnswer];
+  aiVerdict: "pass" | "flag";
+  aiReasoning: string;
+  outcome: ReadinessGateOutcome;
+  adminReviewedBy?: string; // admin email, set only when outcome is set by an admin
+  adminReason?: string; // required when outcome is set to "rejected"
+  adminReviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
 };

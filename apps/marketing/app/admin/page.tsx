@@ -5,6 +5,7 @@ import { AdminGate } from "@/components/admin/admin-gate";
 import { AdminVerificationQueue } from "@/components/admin/verification-queue";
 import { AllUsersQueue } from "@/components/admin/all-users-queue";
 import { ReportsQueue } from "@/components/admin/reports-queue";
+import { ReadinessQueue } from "@/components/admin/readiness-queue";
 
 export const metadata: Metadata = {
   title: "Admin — Tern",
@@ -38,6 +39,13 @@ export default function AdminPage() {
               <h2 className="mt-12 font-serif text-xl font-semibold">Reports</h2>
               <div className="mt-4">
                 <ReportsQueue />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mt-12 font-serif text-xl font-semibold">Readiness review</h2>
+              <div className="mt-4">
+                <ReadinessQueue />
               </div>
             </section>
           </AdminGate>

@@ -139,6 +139,31 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
     }
 
+    // --- Readiness gate ---
+    // A single fixed-path doc per user — never written directly by the
+    // client. Grading must happen atomically with the write (the
+    // Anthropic API key is server-only, and a half-graded doc would be a
+    // real state to defend against), so every write goes through the
+    // submitReadinessGate/reviewReadinessGate server actions
+    // (app/actions.ts) via the Admin SDK, which bypasses these rules
+    // entirely. This block exists as a defensive boundary — it should
+    // never actually be exercised as a real write path.
+    match /users/{uid}/readinessGate/submission {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Collection-group queries (the admin readiness-review queue's
+    // collectionGroup("readinessGate") query) are matched separately
+    // from the direct-path block above — a match on a specific parent
+    // path like users/{uid}/readinessGate/submission only ever applies
+    // when a client reads that exact path, never for a query that spans
+    // every user's subcollection. The recursive {path=**} wildcard is
+    // Firestore's documented way to also cover collection-group reads.
+    match /{path=**}/readinessGate/{docId} {
+      allow list: if isAdmin();
+    }
+
     function isApprovedEmployer(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
         && get(/databases/$(database)/documents/users/$(uid)).data.role == "employer"
@@ -149,6 +174,11 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/users/$(uid))
         && get(/databases/$(database)/documents/users/$(uid)).data.role == "job_seeker"
         && get(/databases/$(database)/documents/users/$(uid)).data.verificationStatus == "approved";
+    }
+
+    function hasPassedReadinessGate(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)/readinessGate/submission)
+        && get(/databases/$(database)/documents/users/$(uid)/readinessGate/submission).data.outcome == "passed";
     }
 
     // --- Jobs ---
@@ -182,7 +212,9 @@ service cloud.firestore {
     }
 
     // --- Applications ---
-    // An approved job seeker can create an application for themself. The
+    // An approved job seeker who has passed their readiness gate
+    // (hasPassedReadinessGate — see the readinessGate block above) can
+    // create an application for themself. The
     // applicant can always read their own; the employer can read it only
     // if the applicant isn't currently banned or suspended. applicantBanned
     // and applicantSuspended are both denormalized onto the application
@@ -204,6 +236,7 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.applicantId
         && isApprovedJobSeeker(request.auth.uid)
+        && hasPassedReadinessGate(request.auth.uid)
         && request.resource.data.applicantBanned == false;
       allow update: if request.auth != null
         && ((request.auth.uid == resource.data.employerId

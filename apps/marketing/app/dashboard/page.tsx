@@ -178,6 +178,17 @@ export default function DashboardPage() {
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
               <>
+                {profile.verificationStatus === "approved" && (
+                  <Link
+                    href="/dashboard/readiness"
+                    className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                  >
+                    <p className="font-serif text-lg font-semibold">Readiness check</p>
+                    <p className="mt-1 text-sm text-granite">
+                      Answer 3 quick questions before you start applying.
+                    </p>
+                  </Link>
+                )}
                 <Link
                   href="/jobs"
                   className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
