@@ -129,6 +129,23 @@ service cloud.firestore {
         && request.auth.uid == uid;
     }
 
+    // --- Notifications ---
+    // Server-authored only (Admin SDK, via app/actions.ts's
+    // writeNotification helper) — a user must never be able to
+    // fabricate or backdate their own notifications, so create/delete
+    // are fully locked down and only bypassed by the Admin SDK
+    // server-side. The owner (or the admin, for their own admin-alert
+    // notifications) can read and can flip `read` on an individual
+    // doc — nothing else is editable.
+    match /users/{uid}/notifications/{notificationId} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow list: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, delete: if false;
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
+    }
+
     function isApprovedEmployer(uid) {
       return exists(/databases/$(database)/documents/users/$(uid))
         && get(/databases/$(database)/documents/users/$(uid)).data.role == "employer"

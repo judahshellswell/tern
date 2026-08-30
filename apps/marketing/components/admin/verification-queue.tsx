@@ -38,7 +38,7 @@ export function AdminVerificationQueue() {
   async function reject(profile: UserProfile, reason: string) {
     const userRef = doc(getClientFirestore(), "users", profile.uid);
     await updateDoc(userRef, { verificationStatus: "rejected", rejectionReason: reason });
-    void notifyRejection(profile.email, profileName(profile), reason);
+    void notifyRejection(profile.uid, profile.email, profileName(profile), reason);
     setActiveAction(null);
   }
 

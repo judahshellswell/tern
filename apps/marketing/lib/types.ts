@@ -250,3 +250,23 @@ export type Report = {
   resolvedAt?: string | null;
   resolvedBy?: string | null; // admin email, for an audit trail
 };
+
+export type NotificationKind =
+  | "account_banned"
+  | "account_suspended"
+  | "signup_rejected"
+  | "new_application"
+  | "application_status_changed"
+  | "job_closing_soon"
+  | "admin_signup_pending"
+  | "admin_report_filed";
+
+export type Notification = {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  link: string; // in-app relative path, e.g. "/employer/jobs/abc123"
+  read: boolean;
+  createdAt: string;
+};

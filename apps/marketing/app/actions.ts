@@ -10,8 +10,36 @@ import { sendSuspensionNotification } from "@/lib/suspension-notification";
 import { notifyAdminOfReport } from "@/lib/report-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
-import { getAdminFirestore, getAdminAuth } from "@/lib/firebase-admin";
-import type { ApplicationStatus, Parish, Report, UserRole } from "@/lib/types";
+import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
+import type { ApplicationStatus, NotificationKind, Parish, Report, UserRole } from "@/lib/types";
+
+// Best-effort in-app notification write, mirroring an email already
+// sent to the same uid. Never throws on its own — every call site
+// wraps this the same way it already wraps the corresponding email
+// send, so a Firestore write failure here can never block or fail the
+// underlying action. Exported (not private) because the closing-soon
+// cron route handler isn't a "use server" module and needs to import
+// this directly.
+export async function writeNotification(
+  uid: string,
+  kind: NotificationKind,
+  title: string,
+  body: string,
+  link: string,
+): Promise<void> {
+  await getAdminFirestore()
+    .collection("users")
+    .doc(uid)
+    .collection("notifications")
+    .add({
+      kind,
+      title,
+      body,
+      link,
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+}
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -73,6 +101,16 @@ export async function notifyAdminOfSignup(
 ) {
   try {
     await notifyAdminOfPendingVerification({ role, name, email });
+    const adminUid = await getAdminUid();
+    if (adminUid) {
+      await writeNotification(
+        adminUid,
+        "admin_signup_pending",
+        "New signup pending verification",
+        `${name} (${role}) — ${email}`,
+        "/admin",
+      );
+    }
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send admin verification notification:", err);
@@ -84,9 +122,10 @@ export async function notifyAdminOfSignup(
 // reason. Same best-effort contract — the rejection itself is already
 // written to Firestore by the time this runs, so a failed send shouldn't
 // be surfaced as if the rejection failed.
-export async function notifyRejection(userEmail: string, name: string, reason: string) {
+export async function notifyRejection(uid: string, userEmail: string, name: string, reason: string) {
   try {
     await sendRejectionNotification({ userEmail, name, reason });
+    await writeNotification(uid, "signup_rejected", "Application not approved", reason, "/dashboard");
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send rejection notification:", err);
@@ -121,6 +160,13 @@ export async function notifyEmployerOfNewApplication(
       jobTitle,
       coverNote,
     });
+    await writeNotification(
+      employerId,
+      "new_application",
+      "New application received",
+      `${applicantName} applied to ${jobTitle}`,
+      `/employer/jobs/${jobId}`,
+    );
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send application notification:", err);
@@ -146,6 +192,13 @@ export async function notifyApplicantOfStatusChange(
       return { ok: false } as const;
     }
     await sendStatusChangeNotification(applicant.email, applicant.displayName, jobTitle, status);
+    await writeNotification(
+      applicantId,
+      "application_status_changed",
+      "Application update",
+      `Your application for ${jobTitle} is now "${status}"`,
+      "/dashboard",
+    );
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send status change notification:", err);
@@ -294,6 +347,7 @@ export async function banUserAccount(
 
   try {
     await sendBanNotification({ userEmail: profile.email, name, reason });
+    await writeNotification(uid, "account_banned", "Account banned", reason, "/dashboard");
   } catch (err) {
     console.error("Failed to send ban notification:", err);
   }
@@ -340,6 +394,7 @@ export async function suspendUserAccount(
 
   try {
     await sendSuspensionNotification({ userEmail: profile.email, name, reason });
+    await writeNotification(uid, "account_suspended", "Account suspended", reason, "/dashboard");
   } catch (err) {
     console.error("Failed to send suspension notification:", err);
   }
@@ -473,6 +528,16 @@ export async function createReport(
       reportedRole: params.reportedRole,
       reason: params.reason,
     });
+    const adminUid = await getAdminUid();
+    if (adminUid) {
+      await writeNotification(
+        adminUid,
+        "admin_report_filed",
+        "New report filed",
+        `${params.reportedName} reported: ${params.reason}`,
+        `/admin/reports/${params.reportId}`,
+      );
+    }
   } catch (err) {
     console.error("Failed to send report notification:", err);
   }

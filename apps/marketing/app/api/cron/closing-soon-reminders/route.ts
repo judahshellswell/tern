@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { sendClosingSoonReminder } from "@/lib/closing-reminder-notification";
+import { writeNotification } from "@/app/actions";
 
 const REMINDER_DAYS_BEFORE = 3;
 
@@ -52,6 +53,13 @@ export async function GET(request: Request) {
         jobTitle: job.title,
         closeDate: job.closeDate,
       });
+      await writeNotification(
+        job.employerId,
+        "job_closing_soon",
+        "Job closing soon",
+        `${job.title} closes on ${job.closeDate}`,
+        `/employer/jobs/${jobDoc.id}`,
+      );
       await jobDoc.ref.update({ closingReminderSentAt: new Date().toISOString() });
       sent++;
     } catch (err) {

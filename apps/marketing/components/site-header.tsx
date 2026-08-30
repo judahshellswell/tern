@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Wordmark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
+import { NotificationBell } from "./notification-bell";
 import { useAuth } from "./auth/auth-provider";
 
 export function SiteHeader() {
@@ -32,6 +33,7 @@ export function SiteHeader() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          {!loading && user && <NotificationBell uid={user.uid} />}
           {!loading && user ? (
             <Link
               href="/dashboard"

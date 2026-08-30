@@ -1,6 +1,7 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
 import type { Auth } from "firebase-admin/auth";
+import { ADMIN_EMAILS } from "./admin";
 
 function getAdminApp(): App {
   const existing = getApps();
@@ -47,4 +48,24 @@ export async function getAdminAuth(): Promise<Auth> {
     auth = getAuth(getAdminApp());
   }
   return auth;
+}
+
+let cachedAdminUid: string | null = null;
+
+// Resolves ADMIN_EMAILS[0] to a Firebase Auth uid, cached per server
+// process (cold starts re-resolve — cheap, a single getUserByEmail
+// call). Used to write in-app notifications for the admin, since
+// notifications are stored per-uid and the admin is only known by
+// email everywhere else in this app.
+export async function getAdminUid(): Promise<string | null> {
+  if (cachedAdminUid) return cachedAdminUid;
+  try {
+    const authInstance = await getAdminAuth();
+    const user = await authInstance.getUserByEmail(ADMIN_EMAILS[0]);
+    cachedAdminUid = user.uid;
+    return cachedAdminUid;
+  } catch (err) {
+    console.error("Failed to resolve admin uid:", err);
+    return null;
+  }
 }
