@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export type ReasonFormKind = "reject" | "ban" | "report";
+export type ReasonFormKind = "reject" | "ban" | "report" | "suspend";
 
 export const REASON_FORM_COPY: Record<
   ReasonFormKind,
@@ -28,6 +28,13 @@ export const REASON_FORM_COPY: Record<
     placeholder: "e.g. They asked me to pay a fee to secure the job.",
     confirmLabel: "Submit report",
     submittingLabel: "Submitting…",
+  },
+  suspend: {
+    label:
+      "Why are you suspending this account? They'll see this message and it'll be emailed to them. This is reversible — you can lift the suspension later.",
+    placeholder: "e.g. Under review after multiple reports — investigating before deciding next steps.",
+    confirmLabel: "Confirm suspension",
+    submittingLabel: "Suspending…",
   },
 };
 

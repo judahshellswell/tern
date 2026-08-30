@@ -82,10 +82,14 @@ function JobApplicants({ jobId }: { jobId: string }) {
       where("employerId", "==", user.uid),
       where("jobId", "==", jobId),
       // Firestore rules can only prove a list query safe using fields the
-      // query itself filters on — the read rule checks applicantBanned,
-      // so this query must filter on it explicitly or every list here
-      // gets rejected with permission-denied regardless of the result set.
+      // query itself filters on — the read rule checks applicantBanned
+      // and applicantSuspended, so this query must filter on both
+      // explicitly or every list here gets rejected with
+      // permission-denied regardless of the result set. Every
+      // application doc has applicantSuspended backfilled to false, so
+      // this equality filter doesn't silently drop older applications.
       where("applicantBanned", "==", false),
+      where("applicantSuspended", "==", false),
       orderBy("createdAt", "desc"),
     );
     const unsubscribe = onSnapshot(q, (snap) => {

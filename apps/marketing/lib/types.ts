@@ -1,6 +1,6 @@
 export type UserRole = "job_seeker" | "employer";
 
-export type VerificationStatus = "pending" | "approved" | "rejected" | "banned";
+export type VerificationStatus = "pending" | "approved" | "rejected" | "banned" | "suspended";
 
 // Jersey's 12 parishes — the fixed location vocabulary for jobs and
 // profiles alike. Replaces free-text location everywhere.
@@ -35,7 +35,7 @@ export type JobSeekerProfile = {
   preferredJobTypes?: JobType[];
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
-  rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected", "banned", or "suspended"
   // Informational only — never gates anything. True immediately for Google
   // sign-in (Google already verifies); for email/password, set once the
   // user's own browser confirms Auth's emailVerified after they click the
@@ -54,7 +54,7 @@ export type EmployerProfile = {
   logoPath: string; // Storage path, e.g. "employer-logos/{uid}/logo.jpg"
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;
-  rejectionReason?: string; // set by admin when verificationStatus is "rejected" or "banned"
+  rejectionReason?: string; // set by admin when verificationStatus is "rejected", "banned", or "suspended"
   emailVerified?: boolean;
   createdAt: string;
 };
@@ -158,6 +158,11 @@ export type Application = {
   // get() against the applicant's profile the way a single-document read
   // could.
   applicantBanned: boolean;
+  // Parallel to applicantBanned but independently reversible — set when
+  // the applicant's account is suspended (not banned) and cleared again
+  // if the suspension is lifted. Kept as a separate field rather than
+  // reusing applicantBanned since ban is permanent and suspend isn't.
+  applicantSuspended?: boolean;
   coverNote: string;
   status: ApplicationStatus;
   // Denormalized from the job's own status at apply time, kept in sync
@@ -240,6 +245,7 @@ export type Report = {
   reportedName: string; // denormalized snapshot for admin display
   reason: string;
   status: ReportStatus;
+  evidenceImagePaths?: string[]; // Storage paths, e.g. "report-evidence/{reporterId}/{reportId}-0.jpg"; max 3
   createdAt: string;
   resolvedAt?: string | null;
   resolvedBy?: string | null; // admin email, for an audit trail

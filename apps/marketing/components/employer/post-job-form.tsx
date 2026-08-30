@@ -61,6 +61,20 @@ export function PostJobForm({ initialJob }: { initialJob?: Job }) {
     );
   }
 
+  if (profile.verificationStatus === "suspended") {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">
+        <p className="font-semibold text-gorse">Account under review</p>
+        <p className="mt-1 text-sm text-granite">
+          Your account is temporarily suspended, so you can&rsquo;t post a job right now.
+        </p>
+        <Link href="/dashboard" className="mt-3 inline-block font-medium text-tide underline">
+          Back to dashboard
+        </Link>
+      </div>
+    );
+  }
+
   if (profile.verificationStatus !== "approved") {
     return (
       <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">

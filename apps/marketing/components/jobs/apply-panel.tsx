@@ -70,6 +70,17 @@ export function ApplyPanel({
     );
   }
 
+  if (profile.verificationStatus === "suspended") {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">
+        <p className="font-semibold text-gorse">Account under review</p>
+        <p className="mt-1 text-sm text-granite">
+          Your account is temporarily suspended, so you can&rsquo;t apply right now.
+        </p>
+      </div>
+    );
+  }
+
   if (profile.verificationStatus !== "approved") {
     return (
       <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">
@@ -106,6 +117,7 @@ export function ApplyPanel({
         applicantId: user!.uid,
         applicantName,
         applicantBanned: false,
+        applicantSuspended: false,
         coverNote,
         status: "submitted",
         jobStatus: "published",

@@ -4,18 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
-import { banUserAccount } from "@/app/actions";
+import { banUserAccount, unsuspendUserAccount } from "@/app/actions";
 import { ReasonForm } from "@/components/admin/reason-form";
 
 export function AllUsersQueue() {
   const [users, setUsers] = useState<UserProfile[] | null>(null);
   const [search, setSearch] = useState("");
   const [banningUid, setBanningUid] = useState<string | null>(null);
+  const [unsuspendingUid, setUnsuspendingUid] = useState<string | null>(null);
 
   useEffect(() => {
     const q = query(
       collection(getClientFirestore(), "users"),
-      where("verificationStatus", "==", "approved"),
+      where("verificationStatus", "in", ["approved", "suspended"]),
     );
     const unsubscribe = onSnapshot(q, (snap) => {
       setUsers(snap.docs.map((d) => d.data() as UserProfile));
@@ -41,6 +42,12 @@ export function AllUsersQueue() {
   async function ban(profile: UserProfile, reason: string) {
     await banUserAccount(profile.uid, reason);
     setBanningUid(null);
+  }
+
+  async function unsuspend(uid: string) {
+    setUnsuspendingUid(uid);
+    await unsuspendUserAccount(uid);
+    setUnsuspendingUid(null);
   }
 
   if (users === null) {
@@ -73,6 +80,7 @@ export function AllUsersQueue() {
               <div>
                 <span className="font-mono text-[10px] uppercase tracking-wide text-granite-soft">
                   {profile.role === "job_seeker" ? "Job seeker" : "Employer"}
+                  {profile.verificationStatus === "suspended" && " · Suspended"}
                 </span>
                 <p className="font-serif text-lg font-semibold">{profileName(profile)}</p>
                 <p className="text-sm text-granite">{profile.email}</p>
@@ -87,7 +95,17 @@ export function AllUsersQueue() {
                 onConfirm={(reason) => ban(profile, reason)}
               />
             ) : (
-              <div className="mt-4">
+              <div className="mt-4 flex gap-2">
+                {profile.verificationStatus === "suspended" && (
+                  <button
+                    type="button"
+                    disabled={unsuspendingUid === profile.uid}
+                    onClick={() => unsuspend(profile.uid)}
+                    className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer disabled:opacity-50"
+                  >
+                    Unsuspend
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setBanningUid(profile.uid)}

@@ -36,6 +36,24 @@ service firebase.storage {
       allow delete: if false;
     }
 
+    // Report evidence images. Owner (the reporter, not the reported
+    // user) can upload up to 3 per report at creation time — the count
+    // cap itself is enforced in firestore.rules on the report document,
+    // not here (Storage rules can't see the sibling Firestore doc). Only
+    // the reporter and the admin can ever read — never the reported
+    // user, who should never learn what evidence exists against them
+    // beyond the report's text reason surfaced through the existing
+    // reports flow. Mirrors verification-ids' write-once, tightly scoped
+    // design.
+    match /report-evidence/{uid}/{fileName} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if false;
+    }
+
     // Default-deny everything else.
     match /{allPaths=**} {
       allow read, write: if false;

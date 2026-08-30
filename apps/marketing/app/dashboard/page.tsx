@@ -25,7 +25,12 @@ export default function DashboardPage() {
   // never gates anything, so this is fire-and-forget.
   useEffect(() => {
     if (!user || !profile) return;
-    if (user.emailVerified && !profile.emailVerified && profile.verificationStatus !== "banned") {
+    if (
+      user.emailVerified &&
+      !profile.emailVerified &&
+      profile.verificationStatus !== "banned" &&
+      profile.verificationStatus !== "suspended"
+    ) {
       void updateDoc(doc(getClientFirestore(), "users", user.uid), { emailVerified: true });
     }
   }, [user, profile]);
@@ -74,6 +79,53 @@ export default function DashboardPage() {
             )}
             <p className="mt-4 text-sm text-granite">
               If you believe this is a mistake, contact us and we&rsquo;ll look into it.
+            </p>
+            <div className="mt-6 flex items-center justify-center gap-4">
+              <Link
+                href="/contact"
+                className="rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
+              >
+                Contact us
+              </Link>
+              <button
+                type="button"
+                onClick={async () => {
+                  await logOut();
+                  router.push("/");
+                }}
+                className="text-sm text-granite underline hover:text-tide cursor-pointer"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </main>
+        <SiteFooter />
+      </>
+    );
+  }
+
+  if (profile.verificationStatus === "suspended") {
+    return (
+      <>
+        <SiteHeader />
+        <main className="flex-1 px-6 py-20">
+          <div className="mx-auto max-w-md text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.1em] text-gorse">
+              Account under review
+            </p>
+            <h1 className="mt-3 font-serif text-2xl font-semibold tracking-tight">
+              This account is temporarily suspended.
+            </h1>
+            {profile.rejectionReason && (
+              <p className="mt-4 rounded-2xl border border-border-strong bg-gorse-bg px-5 py-4 text-sm text-ink">
+                &ldquo;{profile.rejectionReason}&rdquo;
+              </p>
+            )}
+            <p className="mt-4 text-sm text-granite">
+              We&rsquo;re looking into this. It&rsquo;s reversible — you&rsquo;ll be able to use
+              your account again once we&rsquo;ve finished reviewing it, and you don&rsquo;t need
+              to do anything in the meantime.
             </p>
             <div className="mt-6 flex items-center justify-center gap-4">
               <Link

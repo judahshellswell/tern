@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, doc, onSnapshot, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import Link from "next/link";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
-import { banUserAccount } from "@/app/actions";
+import { banUserAccount, dismissReport, markReportActioned } from "@/app/actions";
 import { ReasonForm } from "@/components/admin/reason-form";
 import type { Report } from "@/lib/types";
 
@@ -22,20 +23,12 @@ export function ReportsQueue() {
   }, []);
 
   async function dismiss(report: Report) {
-    await updateDoc(doc(getClientFirestore(), "reports", report.id), {
-      status: "dismissed",
-      resolvedAt: serverTimestamp(),
-      resolvedBy: user?.email ?? null,
-    });
+    await dismissReport(report.id, user?.email ?? "");
   }
 
   async function banReported(report: Report, reason: string) {
     await banUserAccount(report.reportedId, reason);
-    await updateDoc(doc(getClientFirestore(), "reports", report.id), {
-      status: "actioned",
-      resolvedAt: serverTimestamp(),
-      resolvedBy: user?.email ?? null,
-    });
+    await markReportActioned(report.id, user?.email ?? "");
     setBanningId(null);
   }
 
@@ -55,11 +48,13 @@ export function ReportsQueue() {
     <div className="flex flex-col gap-4">
       {reports.map((report) => (
         <div key={report.id} className="rounded-2xl border border-border-strong bg-paper-raised p-5">
-          <p className="font-serif text-lg font-semibold">{report.reportedName}</p>
-          <p className="text-xs text-granite-soft">
-            Reported {report.reportedRole === "employer" ? "employer" : "job seeker"}
-          </p>
-          <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{report.reason}</p>
+          <Link href={`/admin/reports/${report.id}`} className="block hover:opacity-80">
+            <p className="font-serif text-lg font-semibold">{report.reportedName}</p>
+            <p className="text-xs text-granite-soft">
+              Reported {report.reportedRole === "employer" ? "employer" : "job seeker"}
+            </p>
+            <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{report.reason}</p>
+          </Link>
 
           {banningId === report.id ? (
             <ReasonForm

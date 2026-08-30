@@ -45,9 +45,10 @@ service cloud.firestore {
     // A user can read and create their own profile. They can update their
     // own details while pending or rejected (edit-and-resubmit resets
     // verificationStatus to "pending" and clears rejectionReason), but can
-    // never set their own status to "approved" or "banned", and can never
-    // touch their document at all once banned. The admin can read any
-    // profile and update verificationStatus + rejectionReason only.
+    // never set their own status to "approved", "banned", or "suspended",
+    // and can never touch their document at all once banned or suspended.
+    // The admin can read any profile and update verificationStatus +
+    // rejectionReason only.
     match /users/{uid} {
       allow read: if (request.auth != null && request.auth.uid == uid) || isAdmin();
       allow list: if isAdmin();
@@ -68,6 +69,7 @@ service cloud.firestore {
           && request.auth.uid == uid
           && resource.data.verificationStatus != "banned"
           && resource.data.verificationStatus != "approved"
+          && resource.data.verificationStatus != "suspended"
           && request.resource.data.verificationStatus == "pending"
           && !("rejectionReason" in request.resource.data)
           && isValidParish(request.resource.data.location)
@@ -83,6 +85,7 @@ service cloud.firestore {
         || (request.auth != null
           && request.auth.uid == uid
           && resource.data.verificationStatus != "banned"
+          && resource.data.verificationStatus != "suspended"
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["emailVerified"])
           && request.resource.data.emailVerified == true)
         // Lightweight self-edit for an already-approved user fixing their
@@ -171,21 +174,23 @@ service cloud.firestore {
     // --- Applications ---
     // An approved job seeker can create an application for themself. The
     // applicant can always read their own; the employer can read it only
-    // if the applicant isn't currently banned. applicantBanned is
-    // denormalized onto the application (set false at creation — only
-    // approved, non-banned seekers can apply) rather than checked live via
-    // get() — Firestore can only prove a list query safe using fields the
-    // query itself filters on, so a cross-document get() keyed off
-    // resource.data breaks the employer's applicants list query even when
-    // it would otherwise be allowed. Admin can flip it to true — used by
-    // banUserAccount (app/actions.ts) when an approved job seeker is
-    // banned, to cascade the ban onto their existing applications so
-    // employers stop seeing them. Only the employer can update its status.
+    // if the applicant isn't currently banned or suspended. applicantBanned
+    // and applicantSuspended are both denormalized onto the application
+    // (set false at creation — only approved, non-banned, non-suspended
+    // seekers can apply) rather than checked live via get() — Firestore
+    // can only prove a list query safe using fields the query itself
+    // filters on, so a cross-document get() keyed off resource.data breaks
+    // the employer's applicants list query even when it would otherwise be
+    // allowed. Admin can flip either flag — used by banUserAccount and
+    // suspendUserAccount/unsuspendUserAccount (app/actions.ts) to cascade
+    // onto existing applications so employers stop (or resume) seeing
+    // them. Only the employer can update its status.
     match /applications/{applicationId} {
       allow read: if request.auth != null
         && ((request.auth.uid == resource.data.applicantId)
           || (request.auth.uid == resource.data.employerId
-            && resource.data.applicantBanned == false));
+            && resource.data.applicantBanned == false
+            && resource.data.applicantSuspended == false));
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.applicantId
         && isApprovedJobSeeker(request.auth.uid)
@@ -194,7 +199,7 @@ service cloud.firestore {
         && ((request.auth.uid == resource.data.employerId
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "jobStatus"]))
           || (isAdmin()
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["applicantBanned"]))
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["applicantBanned", "applicantSuspended"]))
           // The applicant can withdraw their own application — a one-way
           // move to "withdrawn", never any other status, and never from
           // "withdrawn" or "hired" (already terminal; once hired, that's
@@ -225,7 +230,10 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.reporterId
         && request.resource.data.reporterId != request.resource.data.reportedId
         && request.resource.data.status == "open"
-        && exists(/databases/$(database)/documents/users/$(request.resource.data.reportedId));
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.reportedId))
+        && (!("evidenceImagePaths" in request.resource.data)
+          || (request.resource.data.evidenceImagePaths is list
+            && request.resource.data.evidenceImagePaths.size() <= 3));
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(["status", "resolvedAt", "resolvedBy"]);

@@ -1,15 +1,17 @@
 "use server";
 
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { addToWaitlist, type WaitlistRole } from "@/lib/waitlist";
 import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 import { sendRejectionNotification } from "@/lib/rejection-notification";
 import { sendBanNotification } from "@/lib/ban-notification";
+import { sendSuspensionNotification } from "@/lib/suspension-notification";
+import { notifyAdminOfReport } from "@/lib/report-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth } from "@/lib/firebase-admin";
-import type { ApplicationStatus, Parish } from "@/lib/types";
+import type { ApplicationStatus, Parish, Report, UserRole } from "@/lib/types";
 
 export type WaitlistFormState = {
   status: "idle" | "success" | "error";
@@ -209,6 +211,39 @@ export async function getApplicantProfileForEmployer(
   };
 }
 
+// Shared by banUserAccount and suspendUserAccount — closes an
+// employer's live jobs and marks their applications' jobStatus closed
+// to match (unconditional, not filtered by prior jobStatus, matching
+// the original ban behavior exactly). No-op for a job seeker; the
+// job-seeker-side application flagging (applicantBanned vs
+// applicantSuspended) differs between ban and suspend, so it stays in
+// each caller rather than living here.
+async function closeAccountActivity(
+  db: Firestore,
+  uid: string,
+  role: "job_seeker" | "employer",
+): Promise<void> {
+  if (role !== "employer") return;
+
+  const jobsSnap = await db
+    .collection("jobs")
+    .where("employerId", "==", uid)
+    .where("status", "==", "published")
+    .get();
+  if (!jobsSnap.empty) {
+    const batch = db.batch();
+    jobsSnap.docs.forEach((jobDoc) => batch.update(jobDoc.ref, { status: "closed" }));
+    await batch.commit();
+  }
+
+  const applicationsSnap = await db.collection("applications").where("employerId", "==", uid).get();
+  if (!applicationsSnap.empty) {
+    const batch = db.batch();
+    applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { jobStatus: "closed" }));
+    await batch.commit();
+  }
+}
+
 // The single ban entry point — used by the pending-verification queue's
 // existing ban button and by the "all approved users" and "reports"
 // admin queues. Looks up role/name/email itself from server truth
@@ -239,25 +274,7 @@ export async function banUserAccount(
     rejectionReason: reason,
   });
 
-  if (profile.role === "employer") {
-    const jobsSnap = await db
-      .collection("jobs")
-      .where("employerId", "==", uid)
-      .where("status", "==", "published")
-      .get();
-    if (!jobsSnap.empty) {
-      const batch = db.batch();
-      jobsSnap.docs.forEach((jobDoc) => batch.update(jobDoc.ref, { status: "closed" }));
-      await batch.commit();
-    }
-
-    const applicationsSnap = await db.collection("applications").where("employerId", "==", uid).get();
-    if (!applicationsSnap.empty) {
-      const batch = db.batch();
-      applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { jobStatus: "closed" }));
-      await batch.commit();
-    }
-  }
+  await closeAccountActivity(db, uid, profile.role);
 
   if (profile.role === "job_seeker") {
     const applicationsSnap = await db.collection("applications").where("applicantId", "==", uid).get();
@@ -284,6 +301,91 @@ export async function banUserAccount(
   return { ok: true };
 }
 
+// Reversible counterpart to banUserAccount, triggered either directly by
+// an admin or automatically once an account accrues 3+ open reports (see
+// createReport below). Reuses the same employer-jobs-closing cascade as
+// ban, but deliberately does NOT disable the Firebase Auth account (a
+// suspended user must still be able to log in to see the "under review"
+// screen) and flags a job seeker's applications with applicantSuspended
+// rather than applicantBanned, since that flag must be independently
+// clearable on unsuspendUserAccount without touching a real ban.
+export async function suspendUserAccount(
+  uid: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  const userSnap = await db.collection("users").doc(uid).get();
+  const profile = userSnap.data();
+  if (!profile) {
+    return { ok: false, error: "User not found." };
+  }
+  const name = profile.role === "job_seeker" ? profile.displayName : profile.businessName;
+
+  await db.collection("users").doc(uid).update({
+    verificationStatus: "suspended",
+    rejectionReason: reason,
+  });
+
+  await closeAccountActivity(db, uid, profile.role);
+
+  if (profile.role === "job_seeker") {
+    const applicationsSnap = await db.collection("applications").where("applicantId", "==", uid).get();
+    if (!applicationsSnap.empty) {
+      const batch = db.batch();
+      applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { applicantSuspended: true }));
+      await batch.commit();
+    }
+  }
+
+  try {
+    await sendSuspensionNotification({ userEmail: profile.email, name, reason });
+  } catch (err) {
+    console.error("Failed to send suspension notification:", err);
+  }
+
+  return { ok: true };
+}
+
+// Admin-only reversal of suspendUserAccount. Restores verificationStatus
+// to "approved" (not "pending" — a suspended account was, by definition,
+// already approved before suspension) and clears the suspension reason.
+// Deliberately does NOT reopen any jobs the employer cascade closed —
+// the employer reopens each one manually via the existing "Reopen job"
+// button — and sends no email (only the initial suspension is emailed).
+export async function unsuspendUserAccount(uid: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  const userSnap = await db.collection("users").doc(uid).get();
+  const profile = userSnap.data();
+  if (!profile) {
+    return { ok: false, error: "User not found." };
+  }
+  if (profile.verificationStatus !== "suspended") {
+    return { ok: false, error: "Account is not suspended." };
+  }
+
+  await db.collection("users").doc(uid).update({
+    verificationStatus: "approved",
+    rejectionReason: FieldValue.delete(),
+  });
+
+  if (profile.role === "job_seeker") {
+    const applicationsSnap = await db
+      .collection("applications")
+      .where("applicantId", "==", uid)
+      .where("applicantSuspended", "==", true)
+      .get();
+    if (!applicationsSnap.empty) {
+      const batch = db.batch();
+      applicationsSnap.docs.forEach((appDoc) => batch.update(appDoc.ref, { applicantSuspended: false }));
+      await batch.commit();
+    }
+  }
+
+  return { ok: true };
+}
+
 // Best-effort — a failed increment should never break the job detail
 // page render. Called once per real page load (see app/jobs/[id]/page.tsx),
 // never from inside the metadata-generating fetch, to avoid double-counting.
@@ -296,4 +398,247 @@ export async function incrementJobViewCount(jobId: string): Promise<void> {
   } catch (err) {
     console.error(`Failed to increment view count for job ${jobId}:`, err);
   }
+}
+
+const OPEN_REPORT_SUSPEND_THRESHOLD = 3;
+
+async function countOpenReportsAgainst(db: Firestore, reportedId: string): Promise<number> {
+  const snap = await db
+    .collection("reports")
+    .where("reportedId", "==", reportedId)
+    .where("status", "==", "open")
+    .get();
+  return snap.size;
+}
+
+// Pre-allocates a report document ID (no write) so the client can
+// upload evidence images to a stable Storage path before the report
+// document itself exists — same ordering as ID-document upload already
+// runs ahead of profile creation elsewhere in this app.
+export async function reserveReportId(): Promise<string> {
+  return getAdminFirestore().collection("reports").doc().id;
+}
+
+export type CreateReportParams = {
+  reportId: string; // from reserveReportId()
+  reporterId: string;
+  reporterRole: UserRole;
+  reportedId: string;
+  reportedRole: UserRole;
+  reportedName: string;
+  reason: string;
+  evidenceImagePaths?: string[];
+};
+
+// The report-creation entry point — runs server-side (unlike a bare
+// client addDoc) because it needs the Admin SDK for two things a
+// reporter's own client can't do: sending the admin-alert email (Resend
+// is server-only) and counting open reports against the reported
+// account to decide on auto-suspension (the reports collection's `list`
+// rule is admin-only, so a client-side count is impossible for anyone
+// but the admin). Writes the report itself using the pre-reserved id.
+export async function createReport(
+  params: CreateReportParams,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  if (params.reporterId === params.reportedId) {
+    return { ok: false, error: "You can't report yourself." };
+  }
+  const reportedSnap = await db.collection("users").doc(params.reportedId).get();
+  if (!reportedSnap.exists) {
+    return { ok: false, error: "Reported user not found." };
+  }
+
+  await db
+    .collection("reports")
+    .doc(params.reportId)
+    .set({
+      reporterId: params.reporterId,
+      reporterRole: params.reporterRole,
+      reportedId: params.reportedId,
+      reportedRole: params.reportedRole,
+      reportedName: params.reportedName,
+      reason: params.reason,
+      status: "open",
+      ...(params.evidenceImagePaths?.length ? { evidenceImagePaths: params.evidenceImagePaths } : {}),
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+  try {
+    await notifyAdminOfReport({
+      reportId: params.reportId,
+      reporterRole: params.reporterRole,
+      reportedName: params.reportedName,
+      reportedRole: params.reportedRole,
+      reason: params.reason,
+    });
+  } catch (err) {
+    console.error("Failed to send report notification:", err);
+  }
+
+  try {
+    const openCount = await countOpenReportsAgainst(db, params.reportedId);
+    const reportedProfile = reportedSnap.data();
+    if (
+      openCount >= OPEN_REPORT_SUSPEND_THRESHOLD &&
+      reportedProfile?.verificationStatus !== "banned" &&
+      reportedProfile?.verificationStatus !== "suspended"
+    ) {
+      await suspendUserAccount(
+        params.reportedId,
+        `Automatically suspended after ${openCount} open reports.`,
+      );
+    }
+  } catch (err) {
+    console.error("Failed to check/apply auto-suspend after report creation:", err);
+  }
+
+  return { ok: true };
+}
+
+// Marks a report dismissed, then re-checks whether the reported
+// account's open-report count has dropped back under the auto-suspend
+// threshold — if it has and the account is currently suspended, lifts
+// the suspension. Only reverses what dismissal itself could plausibly
+// have caused: a ban, or a suspension an admin applied directly for
+// unrelated reasons, is left untouched by this check on its own (an
+// admin-applied suspension only gets auto-lifted here if the report
+// count genuinely happens to be under threshold at the time — there's
+// no separate "was this auto-triggered" flag to distinguish the two).
+export async function dismissReport(
+  reportId: string,
+  resolvedBy: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  const reportSnap = await db.collection("reports").doc(reportId).get();
+  const report = reportSnap.data();
+  if (!report) {
+    return { ok: false, error: "Report not found." };
+  }
+
+  await db.collection("reports").doc(reportId).update({
+    status: "dismissed",
+    resolvedAt: FieldValue.serverTimestamp(),
+    resolvedBy,
+  });
+
+  try {
+    const openCount = await countOpenReportsAgainst(db, report.reportedId);
+    if (openCount < OPEN_REPORT_SUSPEND_THRESHOLD) {
+      const reportedSnap = await db.collection("users").doc(report.reportedId).get();
+      if (reportedSnap.data()?.verificationStatus === "suspended") {
+        await unsuspendUserAccount(report.reportedId);
+      }
+    }
+  } catch (err) {
+    console.error("Failed to re-check/lift auto-suspend after report dismissal:", err);
+  }
+
+  return { ok: true };
+}
+
+// Marks a report "actioned" after the admin bans the reported account —
+// distinct from dismissReport, which means "this report wasn't valid."
+// Deliberately does not re-check/lift a suspension the way dismissReport
+// does: banning always wins over any suspension state, so there's
+// nothing to reverse here.
+export async function markReportActioned(
+  reportId: string,
+  resolvedBy: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const db = getAdminFirestore();
+
+  const reportSnap = await db.collection("reports").doc(reportId).get();
+  if (!reportSnap.exists) {
+    return { ok: false, error: "Report not found." };
+  }
+
+  await db.collection("reports").doc(reportId).update({
+    status: "actioned",
+    resolvedAt: FieldValue.serverTimestamp(),
+    resolvedBy,
+  });
+
+  return { ok: true };
+}
+
+export type ReportDetailForAdmin = {
+  report: Report;
+  reportedProfile:
+    | {
+        role: "job_seeker";
+        displayName: string;
+        email: string;
+        dateOfBirth: string;
+        guardianEmail: string | null;
+        location: string;
+        preferredJobTypes?: string[];
+        verificationStatus: string;
+        rejectionReason?: string;
+        createdAt: string;
+      }
+    | {
+        role: "employer";
+        businessName: string;
+        email: string;
+        registrationNumber: string;
+        location: string;
+        verificationStatus: string;
+        rejectionReason?: string;
+        createdAt: string;
+      };
+  otherReports: Report[];
+};
+
+// Admin-only detail fetch for the reports detail page — gated the same
+// way every other admin action in this file is (client-side AdminGate
+// only; this codebase has no server-side session to check against). The
+// admin-facing profile snapshot can include more than the
+// employer-facing ApplicantProfileForEmployer above (email, dateOfBirth)
+// since this audience is trusted more broadly.
+export async function getReportDetailForAdmin(reportId: string): Promise<ReportDetailForAdmin | null> {
+  const db = getAdminFirestore();
+
+  const reportSnap = await db.collection("reports").doc(reportId).get();
+  const reportData = reportSnap.data();
+  if (!reportData) return null;
+  const report = { id: reportSnap.id, ...reportData } as Report;
+
+  const profileSnap = await db.collection("users").doc(report.reportedId).get();
+  const profile = profileSnap.data();
+  if (!profile) return null;
+
+  const otherReportsSnap = await db.collection("reports").where("reportedId", "==", report.reportedId).get();
+  const otherReports = otherReportsSnap.docs
+    .map((d) => ({ id: d.id, ...d.data() }) as Report)
+    .filter((r) => r.id !== reportId);
+
+  const reportedProfile: ReportDetailForAdmin["reportedProfile"] =
+    profile.role === "job_seeker"
+      ? {
+          role: "job_seeker",
+          displayName: profile.displayName,
+          email: profile.email,
+          dateOfBirth: profile.dateOfBirth,
+          guardianEmail: profile.guardianEmail,
+          location: profile.location,
+          preferredJobTypes: profile.preferredJobTypes,
+          verificationStatus: profile.verificationStatus,
+          rejectionReason: profile.rejectionReason,
+          createdAt: profile.createdAt,
+        }
+      : {
+          role: "employer",
+          businessName: profile.businessName,
+          email: profile.email,
+          registrationNumber: profile.registrationNumber,
+          location: profile.location,
+          verificationStatus: profile.verificationStatus,
+          rejectionReason: profile.rejectionReason,
+          createdAt: profile.createdAt,
+        };
+
+  return { report, reportedProfile, otherReports };
 }
