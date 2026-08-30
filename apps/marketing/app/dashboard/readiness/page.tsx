@@ -136,6 +136,11 @@ function ReadinessGate() {
   }
 
   const rejected = submission?.outcome === "rejected";
+  const lockedUntil =
+    rejected && submission.retryLockedUntil && new Date(submission.retryLockedUntil) > new Date()
+      ? new Date(submission.retryLockedUntil)
+      : null;
+  const lockedPermanently = rejected && !!submission.retryLockedPermanently;
 
   if (rejected && !showForm) {
     return (
@@ -146,16 +151,24 @@ function ReadinessGate() {
             &ldquo;{submission.adminReason}&rdquo;
           </p>
         )}
-        <button
-          type="button"
-          onClick={() => {
-            clearStoredAnswers(user.uid);
-            setShowForm(true);
-          }}
-          className="mt-4 rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
-        >
-          Try again
-        </button>
+        {lockedPermanently ? (
+          <p className="mt-4 text-sm text-granite">You&rsquo;re no longer able to retake this course.</p>
+        ) : lockedUntil ? (
+          <p className="mt-4 text-sm text-granite">
+            You can try again from {lockedUntil.toLocaleString()}.
+          </p>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              clearStoredAnswers(user.uid);
+              setShowForm(true);
+            }}
+            className="mt-4 rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright cursor-pointer"
+          >
+            Try again
+          </button>
+        )}
       </div>
     );
   }

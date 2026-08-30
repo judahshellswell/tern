@@ -534,6 +534,42 @@ export const READINESS_MC_MAX_WRONG = 2;
 
 export type ReadinessGateOutcome = "passed" | "flagged" | "rejected";
 
+// Chosen by the admin when rejecting a submission — how long before the
+// seeker can retake the course. "none" matches the original no-cooldown
+// behavior (retake immediately). "permanent" is scoped to the readiness
+// course only — the account itself is untouched, unlike a ban.
+export type ReadinessRetakeDelay = "none" | "24h" | "72h" | "1w" | "permanent";
+
+export const READINESS_RETAKE_DELAY_LABELS: Record<ReadinessRetakeDelay, string> = {
+  none: "None — can retake immediately",
+  "24h": "24 hours",
+  "72h": "72 hours",
+  "1w": "One week",
+  permanent: "Permanent",
+};
+
+const READINESS_RETAKE_DELAY_MS: Record<Exclude<ReadinessRetakeDelay, "none" | "permanent">, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "72h": 72 * 60 * 60 * 1000,
+  "1w": 7 * 24 * 60 * 60 * 1000,
+};
+
+// Resolves a chosen delay (as of `from`) to the submission fields that
+// encode it — kept here, not just in the admin UI, so the same rule
+// (what "permanent" means, what "none" means) governs both the write
+// path (readiness-gate.ts) and any future read of these fields.
+export function resolveReadinessRetakeLock(
+  delay: ReadinessRetakeDelay,
+  from: Date,
+): { retryLockedUntil: string | null; retryLockedPermanently: boolean } {
+  if (delay === "permanent") return { retryLockedUntil: null, retryLockedPermanently: true };
+  if (delay === "none") return { retryLockedUntil: null, retryLockedPermanently: false };
+  return {
+    retryLockedUntil: new Date(from.getTime() + READINESS_RETAKE_DELAY_MS[delay]).toISOString(),
+    retryLockedPermanently: false,
+  };
+}
+
 export type ReadinessItemAnswer = {
   itemId: string;
   prompt: string; // snapshot of the question text at submission time
@@ -567,6 +603,13 @@ export type ReadinessGateSubmission = {
   adminReviewedBy?: string; // admin email, set only when outcome is set by an admin
   adminReason?: string; // required when outcome is set to "rejected"
   adminReviewedAt?: string | null;
+  // Set only on rejection, from the admin's chosen ReadinessRetakeDelay.
+  // retryLockedUntil is an ISO timestamp the seeker must wait past to
+  // resubmit; retryLockedPermanently means never (readiness course
+  // only — the account itself is unaffected). Both absent/false for a
+  // "none" delay, matching the original no-cooldown behavior.
+  retryLockedUntil?: string | null;
+  retryLockedPermanently?: boolean;
   createdAt: string;
   updatedAt: string;
 };

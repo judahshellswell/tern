@@ -1,6 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { READINESS_RETAKE_DELAY_LABELS, type ReadinessRetakeDelay } from "@/lib/types";
+
+const READINESS_RETAKE_DELAY_OPTIONS = Object.keys(READINESS_RETAKE_DELAY_LABELS) as ReadinessRetakeDelay[];
 
 export type ReasonFormKind = "reject" | "ban" | "report" | "suspend" | "readiness_reject";
 
@@ -53,9 +56,10 @@ export function ReasonForm({
 }: {
   kind: ReasonFormKind;
   onCancel: () => void;
-  onConfirm: (reason: string) => void;
+  onConfirm: (reason: string, retakeDelay?: ReadinessRetakeDelay) => void;
 }) {
   const [reason, setReason] = useState("");
+  const [retakeDelay, setRetakeDelay] = useState<ReadinessRetakeDelay>("none");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const copy = REASON_FORM_COPY[kind];
 
@@ -72,13 +76,32 @@ export function ReasonForm({
         placeholder={copy.placeholder}
         className="w-full rounded-lg border border-border-strong bg-paper-raised px-3 py-2 text-sm text-ink placeholder:text-granite-soft outline-none transition-colors focus:border-tide"
       />
+      {kind === "readiness_reject" && (
+        <div className="mt-3">
+          <label htmlFor="retake-delay-select" className="mb-1.5 block text-xs font-medium text-granite">
+            How long before they can retake the course?
+          </label>
+          <select
+            id="retake-delay-select"
+            value={retakeDelay}
+            onChange={(e) => setRetakeDelay(e.target.value as ReadinessRetakeDelay)}
+            className="w-full rounded-lg border border-border-strong bg-paper-raised px-3 py-2 text-sm text-ink outline-none transition-colors focus:border-tide"
+          >
+            {READINESS_RETAKE_DELAY_OPTIONS.map((option) => (
+              <option key={option} value={option}>
+                {READINESS_RETAKE_DELAY_LABELS[option]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="mt-3 flex gap-2">
         <button
           type="button"
           disabled={!reason.trim() || isSubmitting}
           onClick={async () => {
             setIsSubmitting(true);
-            await onConfirm(reason.trim());
+            await onConfirm(reason.trim(), kind === "readiness_reject" ? retakeDelay : undefined);
           }}
           className="rounded-full bg-gorse px-4 py-2 text-sm font-semibold text-paper transition-colors hover:opacity-90 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
         >

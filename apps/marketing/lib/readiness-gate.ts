@@ -1,7 +1,13 @@
 import type { Firestore } from "firebase-admin/firestore";
 import { gradeReadinessGateSubmission, type FreeTextAnswer } from "./readiness-grading";
 import { READINESS_ANSWER_KEY } from "./readiness-answer-key";
-import { READINESS_COURSE, READINESS_MC_MAX_WRONG, type ReadinessSectionResult } from "./types";
+import {
+  READINESS_COURSE,
+  READINESS_MC_MAX_WRONG,
+  resolveReadinessRetakeLock,
+  type ReadinessRetakeDelay,
+  type ReadinessSectionResult,
+} from "./types";
 
 export type SubmitReadinessGateResult =
   | { ok: true; outcome: "passed" | "flagged" }
@@ -31,6 +37,21 @@ export async function writeReadinessGateSubmission(
   uid: string,
   rawAnswers: ReadinessRawAnswers,
 ): Promise<SubmitReadinessGateResult> {
+  // Writes are server-action-only (see the firestore.rules block for
+  // this path), so this is the actual enforcement point for a retry
+  // lock an admin set on a prior rejection — the client-side "you can
+  // retry from [time]" messaging is a courtesy, not the real gate.
+  const existing = await db.collection("users").doc(uid).collection("readinessGate").doc("submission").get();
+  const existingData = existing.data();
+  if (existingData?.outcome === "rejected") {
+    if (existingData.retryLockedPermanently) {
+      return { ok: false, error: "You're no longer able to retake this course." };
+    }
+    if (existingData.retryLockedUntil && new Date(existingData.retryLockedUntil) > new Date()) {
+      return { ok: false, error: `You can try again from ${existingData.retryLockedUntil}.` };
+    }
+  }
+
   const sections: ReadinessSectionResult[] = [];
   const freeTextAnswers: FreeTextAnswer[] = [];
   let mcCorrectCount = 0;
@@ -91,6 +112,7 @@ export async function applyReadinessGateReview(
   decision: "approve" | "reject",
   reason: string | undefined,
   adminEmail: string,
+  retakeDelay?: ReadinessRetakeDelay,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const docRef = db.collection("users").doc(uid).collection("readinessGate").doc("submission");
   const snap = await docRef.get();
@@ -101,10 +123,14 @@ export async function applyReadinessGateReview(
     return { ok: false, error: "A reason is required to reject." };
   }
 
+  const lock =
+    decision === "reject" ? resolveReadinessRetakeLock(retakeDelay ?? "none", new Date()) : undefined;
+
   await docRef.update({
     outcome: decision === "approve" ? "passed" : "rejected",
     adminReviewedBy: adminEmail,
     ...(decision === "reject" ? { adminReason: reason!.trim() } : {}),
+    ...(lock ? { retryLockedUntil: lock.retryLockedUntil, retryLockedPermanently: lock.retryLockedPermanently } : {}),
     adminReviewedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   });

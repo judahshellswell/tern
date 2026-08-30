@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
-import { READINESS_MC_MAX_WRONG, type ReadinessGateSubmission } from "@/lib/types";
+import { READINESS_MC_MAX_WRONG, type ReadinessGateSubmission, type ReadinessRetakeDelay } from "@/lib/types";
 import { reviewReadinessGate } from "@/app/actions";
 import { ReasonForm } from "@/components/admin/reason-form";
 
@@ -46,8 +46,8 @@ export function ReadinessQueue() {
     await reviewReadinessGate(uid, "approve");
   }
 
-  async function reject(uid: string, reason: string) {
-    await reviewReadinessGate(uid, "reject", reason);
+  async function reject(uid: string, reason: string, retakeDelay?: ReadinessRetakeDelay) {
+    await reviewReadinessGate(uid, "reject", reason, retakeDelay);
     setActiveReject(null);
   }
 
@@ -118,7 +118,7 @@ export function ReadinessQueue() {
               <ReasonForm
                 kind="readiness_reject"
                 onCancel={() => setActiveReject(null)}
-                onConfirm={(reason) => reject(submission.uid, reason)}
+                onConfirm={(reason, retakeDelay) => reject(submission.uid, reason, retakeDelay)}
               />
             ) : (
               <div className="mt-4 flex gap-2">

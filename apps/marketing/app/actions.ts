@@ -16,7 +16,14 @@ import {
   applyReadinessGateReview,
   type ReadinessRawAnswers,
 } from "@/lib/readiness-gate";
-import type { ApplicationStatus, NotificationKind, Parish, Report, UserRole } from "@/lib/types";
+import type {
+  ApplicationStatus,
+  NotificationKind,
+  Parish,
+  ReadinessRetakeDelay,
+  Report,
+  UserRole,
+} from "@/lib/types";
 
 // Best-effort in-app notification write, mirroring an email already
 // sent to the same uid. Never throws on its own — every call site
@@ -230,16 +237,18 @@ export async function submitReadinessGate(
 
 // Admin action for the flagged-review queue. Approve overrides the AI
 // flag and passes the seeker; reject requires a reason (reusing
-// ReasonForm's "readiness_reject" kind) and lets them resubmit
-// immediately via submitReadinessGate again — no cooldown, matching
-// the ID-verification reject-and-resubmit pattern.
+// ReasonForm's "readiness_reject" kind) plus a retake delay chosen by
+// the admin — "none" matches the original no-cooldown behavior,
+// anything else (or "permanent") is enforced server-side in
+// writeReadinessGateSubmission, not just shown in the UI.
 export async function reviewReadinessGate(
   uid: string,
   decision: "approve" | "reject",
   reason?: string,
+  retakeDelay?: ReadinessRetakeDelay,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const db = getAdminFirestore();
-  const result = await applyReadinessGateReview(db, uid, decision, reason, ADMIN_EMAILS[0]);
+  const result = await applyReadinessGateReview(db, uid, decision, reason, ADMIN_EMAILS[0], retakeDelay);
   if (!result.ok) return result;
 
   try {
