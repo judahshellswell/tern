@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
-import { WaitlistCta } from "@/components/waitlist-cta";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "FAQ — Tern",
@@ -79,7 +79,7 @@ const groups: { heading: string; items: { q: string; a: string }[] }[] = [
       },
       {
         q: "When does Tern launch?",
-        a: "We're building in public and opening to a small group of Jersey employers and candidates first. Join the waitlist and we'll email you the moment there's a place for you.",
+        a: "We're building in public and opening to a small group of Jersey employers and candidates first. Sign up and we'll review your details as soon as we can.",
       },
     ],
   },
@@ -93,7 +93,7 @@ export default function FaqPage() {
         <PageHeader
           eyebrow="FAQ"
           title="Questions people actually ask us."
-          lede="If something's missing here, join the waitlist and reply to the confirmation email — we read every one."
+          lede="If something's missing here, sign up and reply to the confirmation email — we read every one."
         />
 
         <section className="px-6 py-16 sm:py-20">
@@ -131,7 +131,20 @@ export default function FaqPage() {
           </div>
         </section>
 
-        <WaitlistCta />
+        <section className="border-t border-border px-6 py-16 text-center sm:py-20">
+          <div className="mx-auto max-w-2xl">
+            <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Get started</p>
+            <h2 className="mt-3 text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+              Ready to get started?
+            </h2>
+            <Link
+              href="/sign-up"
+              className="mt-8 inline-block rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+            >
+              Sign up
+            </Link>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

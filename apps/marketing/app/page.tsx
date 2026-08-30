@@ -4,7 +4,6 @@ import { JobTypes } from "@/components/job-types";
 import { HowItWorks } from "@/components/how-it-works";
 import { Trust } from "@/components/trust";
 import { EmployerPitch } from "@/components/employer-pitch";
-import { WaitlistCta } from "@/components/waitlist-cta";
 import { SiteFooter } from "@/components/site-footer";
 
 export default function Home() {
@@ -17,7 +16,6 @@ export default function Home() {
         <HowItWorks />
         <Trust />
         <EmployerPitch />
-        <WaitlistCta />
       </main>
       <SiteFooter />
     </>

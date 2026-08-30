@@ -24,14 +24,12 @@ export default function PrivacyPage() {
             <div>
               <h2 className="font-serif text-xl font-semibold">What we collect</h2>
               <p className="mt-3 text-granite">
-                If you join the waitlist, we collect your email and
-                whether you&rsquo;re a job seeker or an employer. If you
-                create an account, we also collect: for job seekers, your
-                name, date of birth, location, and (if you&rsquo;re 16 or
-                17) a parent or guardian&rsquo;s email for consent; for
-                employers, your business name and registration number.
-                When you post a job or apply to one, we store that job or
-                application.
+                When you create an account, we collect: for job seekers,
+                your name, date of birth, location, and (if you&rsquo;re
+                16 or 17) a parent or guardian&rsquo;s email for consent;
+                for employers, your business name and registration
+                number. When you post a job or apply to one, we store
+                that job or application.
               </p>
             </div>
 

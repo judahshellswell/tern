@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
 import { SectionHeading } from "@/components/how-it-works";
-import { WaitlistCta } from "@/components/waitlist-cta";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "For employers — Tern",
@@ -112,7 +112,23 @@ export default function EmployersPage() {
           </div>
         </section>
 
-        <WaitlistCta defaultRole="employer" />
+        <section className="px-6 py-16 text-center sm:py-20">
+          <div className="mx-auto max-w-2xl">
+            <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Get started</p>
+            <h2 className="mt-3 text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
+              Ready to hire for potential?
+            </h2>
+            <p className="mx-auto mt-4 max-w-[46ch] text-lg text-granite">
+              Sign up and verify your business — most reviews are done within a couple of days.
+            </p>
+            <Link
+              href="/sign-up"
+              className="mt-8 inline-block rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+            >
+              Sign up as an employer
+            </Link>
+          </div>
+        </section>
       </main>
       <SiteFooter />
     </>

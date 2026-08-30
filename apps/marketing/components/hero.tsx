@@ -1,4 +1,4 @@
-import { WaitlistForm } from "./waitlist-form";
+import Link from "next/link";
 
 export function Hero() {
   return (
@@ -19,8 +19,19 @@ export function Hero() {
             and seasonal work, built around potential, not experience.
           </p>
 
-          <div className="mt-10 max-w-md">
-            <WaitlistForm />
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <Link
+              href="/sign-up"
+              className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+            >
+              Sign up
+            </Link>
+            <Link
+              href="/log-in"
+              className="text-sm font-medium text-ink transition-colors hover:text-tide"
+            >
+              Log in
+            </Link>
           </div>
 
           <dl className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm">
