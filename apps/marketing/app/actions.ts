@@ -11,7 +11,7 @@ import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
 import { writeNotification } from "@/lib/notifications";
-import { ADMIN_EMAILS } from "@/lib/admin";
+import { requireAdmin, requireUser } from "@/lib/server-auth";
 import {
   writeReadinessGateSubmission,
   applyReadinessGateReview,
@@ -22,16 +22,41 @@ import type {
   Parish,
   ReadinessRetakeDelay,
   Report,
-  UserRole,
 } from "@/lib/types";
+
+// Every export of this "use server" module is a public HTTP endpoint —
+// anyone can call it with any arguments, not just our own UI. So every
+// action takes the caller's Firebase ID token first and derives "who is
+// calling" from that (lib/server-auth.ts), never from a uid, email or
+// name the browser passes in. Admin actions require the admin's token.
+// Anything that shouldn't be callable from the browser at all belongs in
+// lib/, not here.
+
+const NOT_AUTHORIZED = { ok: false, error: "Not authorized." } as const;
 
 // Called right after a job seeker profile is created, if they're under 18.
 // Failure here shouldn't block account creation — the account already
 // exists in Firestore by the time this runs — so callers should treat
-// this as best-effort and not surface a hard error to the user.
-export async function notifyGuardian(guardianEmail: string, jobSeekerName: string) {
+// this as best-effort and not surface a hard error to the user. The
+// guardian's address and the seeker's name come from the caller's own
+// profile, and it only ever sends once per account, so this can't be
+// used to send Tern-branded email to arbitrary addresses.
+export async function notifyGuardian(idToken: string) {
   try {
-    await sendGuardianNotification({ guardianEmail, jobSeekerName });
+    const { uid } = await requireUser(idToken);
+    const ref = getAdminFirestore().collection("users").doc(uid);
+    const profile = (await ref.get()).data();
+    if (
+      !profile ||
+      profile.role !== "job_seeker" ||
+      typeof profile.guardianEmail !== "string" ||
+      !profile.guardianEmail ||
+      profile.guardianNotifiedAt
+    ) {
+      return { ok: false } as const;
+    }
+    await ref.update({ guardianNotifiedAt: FieldValue.serverTimestamp() });
+    await sendGuardianNotification({ guardianEmail: profile.guardianEmail, jobSeekerName: profile.displayName });
     return { ok: true } as const;
   } catch (err) {
     console.error("Failed to send guardian notification:", err);
@@ -39,15 +64,19 @@ export async function notifyGuardian(guardianEmail: string, jobSeekerName: strin
   }
 }
 
-// Called right after any job seeker or employer profile is created, so the
-// admin doesn't have to poll /admin to know something is waiting. Same
-// best-effort contract as notifyGuardian — never blocks account creation.
-export async function notifyAdminOfSignup(
-  role: "job_seeker" | "employer",
-  name: string,
-  email: string,
-) {
+// Called right after any job seeker or employer profile is created (or
+// resubmitted after rejection), so the admin doesn't have to poll /admin
+// to know something is waiting. Same best-effort contract as
+// notifyGuardian — never blocks account creation. Details come from the
+// caller's own profile, and only while it's actually pending.
+export async function notifyAdminOfSignup(idToken: string) {
   try {
+    const { uid } = await requireUser(idToken);
+    const profile = (await getAdminFirestore().collection("users").doc(uid).get()).data();
+    if (!profile || profile.verificationStatus !== "pending") return { ok: false } as const;
+    const role: "job_seeker" | "employer" = profile.role;
+    const name: string = role === "job_seeker" ? profile.displayName : profile.businessName;
+    const email: string = profile.email;
     await notifyAdminOfPendingVerification({ role, name, email });
     const adminUid = await getAdminUid();
     if (adminUid) {
@@ -70,8 +99,13 @@ export async function notifyAdminOfSignup(
 // reason. Same best-effort contract — the rejection itself is already
 // written to Firestore by the time this runs, so a failed send shouldn't
 // be surfaced as if the rejection failed.
-export async function notifyRejection(uid: string, userEmail: string, name: string, reason: string) {
+export async function notifyRejection(idToken: string, uid: string, reason: string) {
   try {
+    await requireAdmin(idToken);
+    const profile = (await getAdminFirestore().collection("users").doc(uid).get()).data();
+    if (!profile) return { ok: false } as const;
+    const userEmail: string = profile.email;
+    const name: string = profile.role === "job_seeker" ? profile.displayName : profile.businessName;
     await sendRejectionNotification({ userEmail, name, reason });
     await writeNotification(uid, "signup_rejected", "Application not approved", reason, "/dashboard");
     return { ok: true } as const;
@@ -81,21 +115,31 @@ export async function notifyRejection(uid: string, userEmail: string, name: stri
   }
 }
 
-// Called right after an application is written to Firestore. The
-// employer's email/business name comes from server-truth (their own
-// profile doc via the Admin SDK) rather than anything the client passes
-// in. Same best-effort contract as the other notify actions — the
+// Called right after an application is written to Firestore, with its
+// id. Everything comes from server-truth: the caller must be the
+// application's applicant, the employer and job title come from the job
+// doc itself (not the application, whose employerId the applicant
+// wrote), and the employer's email/business name from their profile.
+// Same best-effort contract as the other notify actions — the
 // application already exists by the time this runs, so a failed send
 // shouldn't be surfaced as if the application failed.
-export async function notifyEmployerOfNewApplication(
-  employerId: string,
-  jobId: string,
-  jobTitle: string,
-  applicantName: string,
-  coverNote: string,
-) {
+export async function notifyEmployerOfNewApplication(idToken: string, applicationId: string) {
   try {
-    const snap = await getAdminFirestore().collection("users").doc(employerId).get();
+    const { uid } = await requireUser(idToken);
+    const db = getAdminFirestore();
+    const application = (await db.collection("applications").doc(applicationId).get()).data();
+    if (!application || application.applicantId !== uid || application.notifiedEmployerAt) {
+      return { ok: false } as const;
+    }
+    const job = (await db.collection("jobs").doc(application.jobId).get()).data();
+    if (!job || job.employerId !== application.employerId) return { ok: false } as const;
+    await db.collection("applications").doc(applicationId).update({ notifiedEmployerAt: FieldValue.serverTimestamp() });
+    const employerId: string = job.employerId;
+    const jobId: string = application.jobId;
+    const jobTitle: string = job.title;
+    const applicantName: string = application.applicantName;
+    const coverNote: string = application.coverNote;
+    const snap = await db.collection("users").doc(employerId).get();
     const employer = snap.data();
     if (!employer || employer.role !== "employer") {
       return { ok: false } as const;
@@ -122,18 +166,22 @@ export async function notifyEmployerOfNewApplication(
   }
 }
 
-// Called right after an employer changes an application's status. The
-// applicant's email/name comes from server-truth (their own profile doc
-// via the Admin SDK), never from the employer's client — same trust
-// boundary as notifyEmployerOfNewApplication. Same best-effort contract —
-// the status change is already written to Firestore by the time this
-// runs, so a failed send shouldn't be surfaced as if the update failed.
-export async function notifyApplicantOfStatusChange(
-  applicantId: string,
-  jobTitle: string,
-  status: Exclude<ApplicationStatus, "submitted" | "withdrawn">,
-) {
+// Called right after an employer changes an application's status, with
+// the application's id. The caller must be that application's employer;
+// the status, job title and applicant's email/name all come from
+// server-truth (the application and the applicant's profile), never from
+// the employer's client. Same best-effort contract — the status change
+// is already written to Firestore by the time this runs, so a failed
+// send shouldn't be surfaced as if the update failed.
+export async function notifyApplicantOfStatusChange(idToken: string, applicationId: string) {
   try {
+    const { uid } = await requireUser(idToken);
+    const application = (await getAdminFirestore().collection("applications").doc(applicationId).get()).data();
+    if (!application || application.employerId !== uid) return { ok: false } as const;
+    const status = application.status as ApplicationStatus;
+    if (status === "submitted" || status === "withdrawn") return { ok: false } as const;
+    const applicantId: string = application.applicantId;
+    const jobTitle: string = application.jobTitle;
     const snap = await getAdminFirestore().collection("users").doc(applicantId).get();
     const applicant = snap.data();
     if (!applicant || applicant.role !== "job_seeker") {
@@ -162,9 +210,12 @@ export async function notifyApplicantOfStatusChange(
 // silently drops the submission). This action's own try/catch only
 // guards the (best-effort) notification sends afterward.
 export async function submitReadinessGate(
-  uid: string,
+  idToken: string,
   rawAnswers: ReadinessRawAnswers,
 ): Promise<{ ok: true; outcome: "passed" | "flagged" } | { ok: false; error: string }> {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const uid = caller.uid;
   const db = getAdminFirestore();
   const result = await writeReadinessGateSubmission(db, uid, rawAnswers);
   if (!result.ok) return result;
@@ -214,13 +265,16 @@ export async function submitReadinessGate(
 // anything else (or "permanent") is enforced server-side in
 // writeReadinessGateSubmission, not just shown in the UI.
 export async function reviewReadinessGate(
+  idToken: string,
   uid: string,
   decision: "approve" | "reject",
   reason?: string,
   retakeDelay?: ReadinessRetakeDelay,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
   const db = getAdminFirestore();
-  const result = await applyReadinessGateReview(db, uid, decision, reason, ADMIN_EMAILS[0], retakeDelay);
+  const result = await applyReadinessGateReview(db, uid, decision, reason, admin.email ?? "", retakeDelay);
   if (!result.ok) return result;
 
   try {
@@ -255,21 +309,22 @@ export type ApplicantProfileForEmployer = {
 };
 
 // Lets an employer open a fuller profile for someone who applied to one
-// of their jobs. There's no server-side session in this app (auth is
-// Firebase client-SDK only), so the caller's identity can't be verified
-// here the way a normal server session would — instead, access is gated
-// by requiring a real `applications` document linking employerId to
-// applicantId, which only exists if that applicant genuinely applied to
-// that employer's job. This is the same trust boundary the rest of the
-// app already exposes to that employer via the applications collection
+// of their jobs. The employer is the verified caller, and access
+// requires a real `applications` document linking them to applicantId,
+// which only exists if that applicant genuinely applied to that
+// employer's job. This is the same trust boundary the rest of the app
+// already exposes to that employer via the applications collection
 // (they can already read applicantName off a real application) — this
 // action just returns more fields (location, portfolio) once that same
 // relationship is confirmed. Never returns idDocumentPath, dateOfBirth,
 // guardianEmail, or email.
 export async function getApplicantProfileForEmployer(
-  employerId: string,
+  idToken: string,
   applicantId: string,
 ): Promise<ApplicantProfileForEmployer | null> {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return null;
+  const employerId = caller.uid;
   const db = getAdminFirestore();
 
   const applicationsSnap = await db
@@ -352,9 +407,11 @@ async function closeAccountActivity(
 // via existing rules and the dashboard's suspended-account screen — so a
 // failure disabling Auth afterward is logged but doesn't undo the ban.
 export async function banUserAccount(
+  idToken: string,
   uid: string,
   reason: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return NOT_AUTHORIZED;
   const db = getAdminFirestore();
 
   const userSnap = await db.collection("users").doc(uid).get();
@@ -406,6 +463,17 @@ export async function banUserAccount(
 // rather than applicantBanned, since that flag must be independently
 // clearable on unsuspendUserAccount without touching a real ban.
 export async function suspendUserAccount(
+  idToken: string,
+  uid: string,
+  reason: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return NOT_AUTHORIZED;
+  return suspendAccount(uid, reason);
+}
+
+// Not exported — also used by createReport's auto-suspend, which runs
+// on a (verified) reporter's behalf rather than the admin's.
+async function suspendAccount(
   uid: string,
   reason: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -450,7 +518,16 @@ export async function suspendUserAccount(
 // Deliberately does NOT reopen any jobs the employer cascade closed —
 // the employer reopens each one manually via the existing "Reopen job"
 // button — and sends no email (only the initial suspension is emailed).
-export async function unsuspendUserAccount(uid: string): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function unsuspendUserAccount(
+  idToken: string,
+  uid: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return NOT_AUTHORIZED;
+  return unsuspendAccount(uid);
+}
+
+// Not exported — also used by dismissReport's auto-lift.
+async function unsuspendAccount(uid: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const db = getAdminFirestore();
 
   const userSnap = await db.collection("users").doc(uid).get();
@@ -483,49 +560,39 @@ export async function unsuspendUserAccount(uid: string): Promise<{ ok: true } | 
   return { ok: true };
 }
 
-// Best-effort — a failed increment should never break the job detail
-// page render. Called once per real page load (see app/jobs/[id]/page.tsx),
-// never from inside the metadata-generating fetch, to avoid double-counting.
-export async function incrementJobViewCount(jobId: string): Promise<void> {
-  try {
-    await getAdminFirestore()
-      .collection("jobs")
-      .doc(jobId)
-      .update({ viewCount: FieldValue.increment(1) });
-  } catch (err) {
-    console.error(`Failed to increment view count for job ${jobId}:`, err);
-  }
-}
-
 const OPEN_REPORT_SUSPEND_THRESHOLD = 3;
 
+// Counts distinct reporters, not reports — otherwise one person filing
+// three reports could get anyone auto-suspended on their own.
 async function countOpenReportsAgainst(db: Firestore, reportedId: string): Promise<number> {
   const snap = await db
     .collection("reports")
     .where("reportedId", "==", reportedId)
     .where("status", "==", "open")
     .get();
-  return snap.size;
+  return new Set(snap.docs.map((d) => d.data().reporterId)).size;
 }
 
 // Pre-allocates a report document ID (no write) so the client can
 // upload evidence images to a stable Storage path before the report
 // document itself exists — same ordering as ID-document upload already
 // runs ahead of profile creation elsewhere in this app.
-export async function reserveReportId(): Promise<string> {
+export async function reserveReportId(idToken: string): Promise<string> {
+  await requireUser(idToken);
   return getAdminFirestore().collection("reports").doc().id;
 }
 
+// Reporter identity/role and the reported user's role/name are all
+// looked up server-side from the verified caller and reportedId.
 export type CreateReportParams = {
   reportId: string; // from reserveReportId()
-  reporterId: string;
-  reporterRole: UserRole;
   reportedId: string;
-  reportedRole: UserRole;
-  reportedName: string;
   reason: string;
   evidenceImagePaths?: string[];
 };
+
+const MAX_REPORT_REASON_LENGTH = 2000;
+const MAX_REPORT_EVIDENCE = 3;
 
 // The report-creation entry point — runs server-side (unlike a bare
 // client addDoc) because it needs the Admin SDK for two things a
@@ -535,40 +602,65 @@ export type CreateReportParams = {
 // rule is admin-only, so a client-side count is impossible for anyone
 // but the admin). Writes the report itself using the pre-reserved id.
 export async function createReport(
+  idToken: string,
   params: CreateReportParams,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const reporterId = caller.uid;
   const db = getAdminFirestore();
 
-  if (params.reporterId === params.reportedId) {
+  if (reporterId === params.reportedId) {
     return { ok: false, error: "You can't report yourself." };
   }
-  const reportedSnap = await db.collection("users").doc(params.reportedId).get();
-  if (!reportedSnap.exists) {
-    return { ok: false, error: "Reported user not found." };
+  const reason = typeof params.reason === "string" ? params.reason.trim() : "";
+  if (!reason || reason.length > MAX_REPORT_REASON_LENGTH) {
+    return { ok: false, error: "Please give a reason (up to 2000 characters)." };
+  }
+  // Evidence must be files the reporter uploaded themself for this report.
+  const evidenceImagePaths = params.evidenceImagePaths ?? [];
+  if (
+    evidenceImagePaths.length > MAX_REPORT_EVIDENCE ||
+    !evidenceImagePaths.every((p) => typeof p === "string" && p.startsWith(`report-evidence/${reporterId}/`))
+  ) {
+    return { ok: false, error: "Invalid evidence." };
   }
 
-  await db
-    .collection("reports")
-    .doc(params.reportId)
-    .set({
-      reporterId: params.reporterId,
-      reporterRole: params.reporterRole,
-      reportedId: params.reportedId,
-      reportedRole: params.reportedRole,
-      reportedName: params.reportedName,
-      reason: params.reason,
-      status: "open",
-      ...(params.evidenceImagePaths?.length ? { evidenceImagePaths: params.evidenceImagePaths } : {}),
-      createdAt: FieldValue.serverTimestamp(),
-    });
+  const reporterProfile = (await db.collection("users").doc(reporterId).get()).data();
+  if (!reporterProfile) {
+    return { ok: false, error: "Your account wasn't found." };
+  }
+  const reportedSnap = await db.collection("users").doc(params.reportedId).get();
+  const reportedProfile = reportedSnap.data();
+  if (!reportedProfile) {
+    return { ok: false, error: "Reported user not found." };
+  }
+  const reportedName: string =
+    reportedProfile.role === "job_seeker" ? reportedProfile.displayName : reportedProfile.businessName;
+
+  const reportRef = db.collection("reports").doc(params.reportId);
+  if ((await reportRef.get()).exists) {
+    return { ok: false, error: "This report was already submitted." };
+  }
+  await reportRef.set({
+    reporterId,
+    reporterRole: reporterProfile.role,
+    reportedId: params.reportedId,
+    reportedRole: reportedProfile.role,
+    reportedName,
+    reason,
+    status: "open",
+    ...(evidenceImagePaths.length ? { evidenceImagePaths } : {}),
+    createdAt: FieldValue.serverTimestamp(),
+  });
 
   try {
     await notifyAdminOfReport({
       reportId: params.reportId,
-      reporterRole: params.reporterRole,
-      reportedName: params.reportedName,
-      reportedRole: params.reportedRole,
-      reason: params.reason,
+      reporterRole: reporterProfile.role,
+      reportedName,
+      reportedRole: reportedProfile.role,
+      reason,
     });
     const adminUid = await getAdminUid();
     if (adminUid) {
@@ -576,7 +668,7 @@ export async function createReport(
         adminUid,
         "admin_report_filed",
         "New report filed",
-        `${params.reportedName} reported: ${params.reason}`,
+        `${reportedName} reported: ${reason}`,
         `/admin/reports/${params.reportId}`,
       );
     }
@@ -586,15 +678,14 @@ export async function createReport(
 
   try {
     const openCount = await countOpenReportsAgainst(db, params.reportedId);
-    const reportedProfile = reportedSnap.data();
     if (
       openCount >= OPEN_REPORT_SUSPEND_THRESHOLD &&
       reportedProfile?.verificationStatus !== "banned" &&
       reportedProfile?.verificationStatus !== "suspended"
     ) {
-      await suspendUserAccount(
+      await suspendAccount(
         params.reportedId,
-        `Automatically suspended after ${openCount} open reports.`,
+        `Automatically suspended after reports from ${openCount} different people.`,
       );
     }
   } catch (err) {
@@ -614,9 +705,12 @@ export async function createReport(
 // count genuinely happens to be under threshold at the time — there's
 // no separate "was this auto-triggered" flag to distinguish the two).
 export async function dismissReport(
+  idToken: string,
   reportId: string,
-  resolvedBy: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const resolvedBy = admin.email ?? "";
   const db = getAdminFirestore();
 
   const reportSnap = await db.collection("reports").doc(reportId).get();
@@ -636,7 +730,7 @@ export async function dismissReport(
     if (openCount < OPEN_REPORT_SUSPEND_THRESHOLD) {
       const reportedSnap = await db.collection("users").doc(report.reportedId).get();
       if (reportedSnap.data()?.verificationStatus === "suspended") {
-        await unsuspendUserAccount(report.reportedId);
+        await unsuspendAccount(report.reportedId);
       }
     }
   } catch (err) {
@@ -652,9 +746,12 @@ export async function dismissReport(
 // does: banning always wins over any suspension state, so there's
 // nothing to reverse here.
 export async function markReportActioned(
+  idToken: string,
   reportId: string,
-  resolvedBy: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const resolvedBy = admin.email ?? "";
   const db = getAdminFirestore();
 
   const reportSnap = await db.collection("reports").doc(reportId).get();
@@ -699,13 +796,16 @@ export type ReportDetailForAdmin = {
   otherReports: Report[];
 };
 
-// Admin-only detail fetch for the reports detail page — gated the same
-// way every other admin action in this file is (client-side AdminGate
-// only; this codebase has no server-side session to check against). The
+// Admin-only detail fetch for the reports detail page — requires the
+// admin's verified token, like every other admin action here. The
 // admin-facing profile snapshot can include more than the
 // employer-facing ApplicantProfileForEmployer above (email, dateOfBirth)
 // since this audience is trusted more broadly.
-export async function getReportDetailForAdmin(reportId: string): Promise<ReportDetailForAdmin | null> {
+export async function getReportDetailForAdmin(
+  idToken: string,
+  reportId: string,
+): Promise<ReportDetailForAdmin | null> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return null;
   const db = getAdminFirestore();
 
   const reportSnap = await db.collection("reports").doc(reportId).get();

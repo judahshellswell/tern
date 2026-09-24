@@ -4,7 +4,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { JOB_TYPE_LABELS, type HoursMode, type Parish, type PayMode } from "@/lib/types";
 import { getAdminFirestore } from "@/lib/firebase-admin";
-import { incrementJobViewCount } from "@/app/actions";
+import { incrementJobViewCount } from "@/lib/job-views";
 import { ApplyPanel } from "@/components/jobs/apply-panel";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
 import { ReportButton } from "@/components/reports/report-button";
@@ -83,7 +83,6 @@ export default async function JobDetailPage({
               reporterRole="job_seeker"
               reportedId={job.employerId}
               reportedRole="employer"
-              reportedName={job.employerName}
             />
           </div>
 

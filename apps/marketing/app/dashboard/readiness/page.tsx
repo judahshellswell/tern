@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { submitReadinessGate } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { READINESS_COURSE, type ReadinessGateSubmission } from "@/lib/types";
 import type { ReadinessRawAnswers } from "@/lib/readiness-gate";
 
@@ -234,7 +235,7 @@ function ReadinessGateForm({ uid, onSubmitted }: { uid: string; onSubmitted: () 
     setError("");
     setIsPending(true);
     try {
-      const result = await submitReadinessGate(uid, answers);
+      const result = await submitReadinessGate(await getIdToken(), answers);
       if (!result.ok) {
         setError(result.error);
       } else {

@@ -13,6 +13,7 @@ import { createJobSeekerProfile, createEmployerProfile } from "@/lib/profile";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { notifyAdminOfSignup } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { useAuth } from "@/components/auth/auth-provider";
 import { ParishSelect } from "@/components/ui/parish-select";
 
@@ -98,7 +99,7 @@ export function ReapplyForm({
           },
           emailVerified,
         );
-        void notifyAdminOfSignup("job_seeker", displayName, profile.email);
+        void getIdToken().then(notifyAdminOfSignup);
       } else if (profile.role === "employer" && logoFile) {
         const { path: logoPath } = await uploadEmployerLogo(profile.uid, logoFile);
         await createEmployerProfile(
@@ -112,7 +113,7 @@ export function ReapplyForm({
           },
           emailVerified,
         );
-        void notifyAdminOfSignup("employer", businessName, profile.email);
+        void getIdToken().then(notifyAdminOfSignup);
       }
       onDone();
     } catch {

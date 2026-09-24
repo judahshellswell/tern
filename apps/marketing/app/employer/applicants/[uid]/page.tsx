@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getApplicantProfileForEmployer, type ApplicantProfileForEmployer } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReportButton } from "@/components/reports/report-button";
 
 export default function ApplicantProfilePage({
@@ -35,7 +36,9 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
   useEffect(() => {
     if (!user || !profile || profile.role !== "employer") return;
     let cancelled = false;
-    getApplicantProfileForEmployer(user.uid, applicantId).then((data) => {
+    getIdToken()
+      .then((token) => getApplicantProfileForEmployer(token, applicantId))
+      .then((data) => {
       if (!cancelled) setResult(data);
     });
     return () => {
@@ -116,7 +119,6 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
           reporterRole="employer"
           reportedId={applicantId}
           reportedRole="job_seeker"
-          reportedName={result.displayName}
         />
       </div>
     </>

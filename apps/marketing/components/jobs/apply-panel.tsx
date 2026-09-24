@@ -6,6 +6,7 @@ import { addDoc, collection, doc, onSnapshot, serverTimestamp } from "firebase/f
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import type { HoursMode, JobType, Parish, PayMode, ReadinessGateOutcome } from "@/lib/types";
 
 export function ApplyPanel({
@@ -146,7 +147,7 @@ export function ApplyPanel({
     setIsPending(true);
     try {
       const applicantName = (profile as { displayName: string }).displayName;
-      await addDoc(collection(getClientFirestore(), "applications"), {
+      const applicationRef = await addDoc(collection(getClientFirestore(), "applications"), {
         jobId,
         jobTitle,
         employerId,
@@ -171,7 +172,7 @@ export function ApplyPanel({
         skills,
         createdAt: serverTimestamp(),
       });
-      void notifyEmployerOfNewApplication(employerId, jobId, jobTitle, applicantName, coverNote);
+      void getIdToken().then((token) => notifyEmployerOfNewApplication(token, applicationRef.id));
       setSubmitted(true);
     } catch {
       setError("Couldn't submit your application. Please try again.");

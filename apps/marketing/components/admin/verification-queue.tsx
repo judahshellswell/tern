@@ -7,6 +7,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
 import { notifyRejection, banUserAccount } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 
 type Action = { uid: string; kind: "reject" | "ban" };
@@ -26,10 +27,6 @@ export function AdminVerificationQueue() {
     return unsubscribe;
   }, []);
 
-  function profileName(profile: UserProfile) {
-    return profile.role === "job_seeker" ? profile.displayName : profile.businessName;
-  }
-
   async function approve(uid: string) {
     const userRef = doc(getClientFirestore(), "users", uid);
     await updateDoc(userRef, { verificationStatus: "approved" });
@@ -38,12 +35,12 @@ export function AdminVerificationQueue() {
   async function reject(profile: UserProfile, reason: string) {
     const userRef = doc(getClientFirestore(), "users", profile.uid);
     await updateDoc(userRef, { verificationStatus: "rejected", rejectionReason: reason });
-    void notifyRejection(profile.uid, profile.email, profileName(profile), reason);
+    void getIdToken().then((token) => notifyRejection(token, profile.uid, reason));
     setActiveAction(null);
   }
 
   async function ban(profile: UserProfile, reason: string) {
-    await banUserAccount(profile.uid, reason);
+    await banUserAccount(await getIdToken(), profile.uid, reason);
     setActiveAction(null);
   }
 

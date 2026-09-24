@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientStorage } from "@/lib/firebase-client";
-import { useAuth } from "@/components/auth/auth-provider";
 import {
   getReportDetailForAdmin,
   banUserAccount,
@@ -15,6 +14,7 @@ import {
   markReportActioned,
   type ReportDetailForAdmin,
 } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 import type { ReportStatus } from "@/lib/types";
 
@@ -25,14 +25,15 @@ const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 };
 
 export function ReportDetail({ reportId }: { reportId: string }) {
-  const { user } = useAuth();
   const [result, setResult] = useState<ReportDetailForAdmin | null | undefined>(undefined);
   const [action, setAction] = useState<"ban" | "suspend" | null>(null);
   const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    getReportDetailForAdmin(reportId).then((data) => {
+    getIdToken()
+      .then((token) => getReportDetailForAdmin(token, reportId))
+      .then((data) => {
       if (!cancelled) setResult(data);
     });
     return () => {
@@ -55,21 +56,22 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const { report, reportedProfile, otherReports } = result;
 
   async function refresh() {
-    const data = await getReportDetailForAdmin(reportId);
+    const data = await getReportDetailForAdmin(await getIdToken(), reportId);
     setResult(data);
   }
 
   async function dismiss() {
     setIsPending(true);
-    await dismissReport(reportId, user?.email ?? "");
+    await dismissReport(await getIdToken(), reportId);
     await refresh();
     setIsPending(false);
   }
 
   async function ban(reason: string) {
     setIsPending(true);
-    await banUserAccount(report.reportedId, reason);
-    await markReportActioned(reportId, user?.email ?? "");
+    const token = await getIdToken();
+    await banUserAccount(token, report.reportedId, reason);
+    await markReportActioned(token, reportId);
     setAction(null);
     await refresh();
     setIsPending(false);
@@ -77,8 +79,9 @@ export function ReportDetail({ reportId }: { reportId: string }) {
 
   async function suspend(reason: string) {
     setIsPending(true);
-    await suspendUserAccount(report.reportedId, reason);
-    await markReportActioned(reportId, user?.email ?? "");
+    const token = await getIdToken();
+    await suspendUserAccount(token, report.reportedId, reason);
+    await markReportActioned(token, reportId);
     setAction(null);
     await refresh();
     setIsPending(false);
@@ -86,7 +89,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
 
   async function unsuspend() {
     setIsPending(true);
-    await unsuspendUserAccount(report.reportedId);
+    await unsuspendUserAccount(await getIdToken(), report.reportedId);
     await refresh();
     setIsPending(false);
   }

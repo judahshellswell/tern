@@ -5,6 +5,7 @@ import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
 import { banUserAccount, unsuspendUserAccount } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 
 export function AllUsersQueue() {
@@ -40,13 +41,13 @@ export function AllUsersQueue() {
   }, [users, search]);
 
   async function ban(profile: UserProfile, reason: string) {
-    await banUserAccount(profile.uid, reason);
+    await banUserAccount(await getIdToken(), profile.uid, reason);
     setBanningUid(null);
   }
 
   async function unsuspend(uid: string) {
     setUnsuspendingUid(uid);
-    await unsuspendUserAccount(uid);
+    await unsuspendUserAccount(await getIdToken(), uid);
     setUnsuspendingUid(null);
   }
 

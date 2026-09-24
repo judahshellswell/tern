@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { reserveReportId, createReport } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { validateReportEvidence, uploadReportEvidence } from "@/lib/report-evidence-upload";
 import { ReasonForm } from "@/components/admin/reason-form";
 import type { UserRole } from "@/lib/types";
@@ -13,12 +14,10 @@ export function ReportButton({
   reporterRole,
   reportedId,
   reportedRole,
-  reportedName,
 }: {
   reporterRole: UserRole;
   reportedId: string;
   reportedRole: UserRole;
-  reportedName: string;
 }) {
   const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
@@ -52,16 +51,13 @@ export function ReportButton({
   async function submit(reason: string) {
     setSubmitError("");
     try {
-      const reportId = await reserveReportId();
+      const token = await getIdToken();
+      const reportId = await reserveReportId(token);
       const evidenceImagePaths =
         files.length > 0 ? await uploadReportEvidence(user!.uid, reportId, files) : undefined;
-      const result = await createReport({
+      const result = await createReport(token, {
         reportId,
-        reporterId: user!.uid,
-        reporterRole,
         reportedId,
-        reportedRole,
-        reportedName,
         reason,
         evidenceImagePaths,
       });

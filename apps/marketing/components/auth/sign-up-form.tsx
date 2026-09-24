@@ -8,6 +8,7 @@ import { isUnder18, isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/li
 import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEmail } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { ParishSelect } from "@/components/ui/parish-select";
@@ -136,9 +137,9 @@ export function SignUpForm() {
         if (under18 && guardianEmail) {
           // Best-effort — the account is already created either way, and
           // the form doesn't block on or surface failures from this.
-          void notifyGuardian(guardianEmail, displayName);
+          void getIdToken().then(notifyGuardian);
         }
-        void notifyAdminOfSignup("job_seeker", displayName, email);
+        void getIdToken().then(notifyAdminOfSignup);
       } else if (logoFile) {
         const { path: logoPath } = await uploadEmployerLogo(uid, logoFile);
         await createEmployerProfile(
@@ -152,7 +153,7 @@ export function SignUpForm() {
           },
           emailVerified,
         );
-        void notifyAdminOfSignup("employer", businessName, email);
+        void getIdToken().then(notifyAdminOfSignup);
       }
       router.push("/dashboard");
     } catch (err) {

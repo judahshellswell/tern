@@ -4,13 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
-import { useAuth } from "@/components/auth/auth-provider";
 import { banUserAccount, dismissReport, markReportActioned } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 import type { Report } from "@/lib/types";
 
 export function ReportsQueue() {
-  const { user } = useAuth();
   const [reports, setReports] = useState<Report[] | null>(null);
   const [banningId, setBanningId] = useState<string | null>(null);
 
@@ -23,12 +22,13 @@ export function ReportsQueue() {
   }, []);
 
   async function dismiss(report: Report) {
-    await dismissReport(report.id, user?.email ?? "");
+    await dismissReport(await getIdToken(), report.id);
   }
 
   async function banReported(report: Report, reason: string) {
-    await banUserAccount(report.reportedId, reason);
-    await markReportActioned(report.id, user?.email ?? "");
+    const token = await getIdToken();
+    await banUserAccount(token, report.reportedId, reason);
+    await markReportActioned(token, report.id);
     setBanningId(null);
   }
 

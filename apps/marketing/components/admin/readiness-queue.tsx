@@ -5,6 +5,7 @@ import { collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { READINESS_MC_MAX_WRONG, type ReadinessGateSubmission, type ReadinessRetakeDelay } from "@/lib/types";
 import { reviewReadinessGate } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 
 type FlaggedSubmission = ReadinessGateSubmission & { uid: string };
@@ -43,11 +44,11 @@ export function ReadinessQueue() {
   }
 
   async function approve(uid: string) {
-    await reviewReadinessGate(uid, "approve");
+    await reviewReadinessGate(await getIdToken(), uid, "approve");
   }
 
   async function reject(uid: string, reason: string, retakeDelay?: ReadinessRetakeDelay) {
-    await reviewReadinessGate(uid, "reject", reason, retakeDelay);
+    await reviewReadinessGate(await getIdToken(), uid, "reject", reason, retakeDelay);
     setActiveReject(null);
   }
 

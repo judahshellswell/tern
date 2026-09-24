@@ -25,6 +25,7 @@ import {
 } from "@/lib/types";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
 import { notifyApplicantOfStatusChange } from "@/app/actions";
+import { getIdToken } from "@/lib/id-token";
 
 // "withdrawn" is a one-way action the applicant takes on themself — it
 // never appears as something the employer can select.
@@ -104,7 +105,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
     // produce (STATUS_OPTIONS excludes it) — this check is for TypeScript,
     // not a real runtime path.
     if (status !== "submitted" && status !== "withdrawn") {
-      void notifyApplicantOfStatusChange(application.applicantId, application.jobTitle, status);
+      void getIdToken().then((token) => notifyApplicantOfStatusChange(token, application.id));
     }
   }
 
