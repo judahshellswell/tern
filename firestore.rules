@@ -139,6 +139,27 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["read"]);
     }
 
+    // --- Web Push subscriptions ---
+    // One doc per device the user has turned push on for, written by
+    // that user's own browser (lib/push-client.ts) and read server-side
+    // by the Admin SDK to send (lib/push.ts). Owner-only in both
+    // directions, so nobody can attach their device to someone else's
+    // account or read another user's endpoints. The endpoint must be an
+    // https push-service URL; p256dh/auth are the two keys the browser gives.
+    match /users/{uid}/pushSubscriptions/{subId} {
+      allow read, delete: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(["endpoint", "p256dh", "auth", "userAgent", "createdAt"])
+        && request.resource.data.endpoint is string
+        && request.resource.data.endpoint.matches("https://.+")
+        && request.resource.data.endpoint.size() < 1000
+        && request.resource.data.p256dh is string
+        && request.resource.data.auth is string
+        && request.resource.data.p256dh.size() < 200
+        && request.resource.data.auth.size() < 100;
+    }
+
     // --- Readiness gate ---
     // A single fixed-path doc per user — never written directly by the
     // client. Grading must happen atomically with the write (the

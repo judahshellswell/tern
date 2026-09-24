@@ -9,6 +9,7 @@ import {
   type UserCredential,
 } from "firebase/auth";
 import { getClientAuth, googleAuthProvider } from "./firebase-client";
+import { disablePush } from "./push-client";
 
 export function signUpWithEmail(
   email: string,
@@ -28,8 +29,19 @@ export function signInWithGoogle(): Promise<UserCredential> {
   return signInWithPopup(getClientAuth(), googleAuthProvider);
 }
 
-export function logOut(): Promise<void> {
-  return signOut(getClientAuth());
+// Unsubscribes this device from push first (while still signed in, so the
+// Firestore rules allow deleting the subscription doc) — otherwise a
+// shared phone would keep getting the previous user's notifications.
+export async function logOut(): Promise<void> {
+  const auth = getClientAuth();
+  if (auth.currentUser && "serviceWorker" in navigator) {
+    try {
+      await disablePush(auth.currentUser.uid);
+    } catch (err) {
+      console.error("Failed to unsubscribe push on log out:", err);
+    }
+  }
+  return signOut(auth);
 }
 
 export function resetPassword(email: string): Promise<void> {

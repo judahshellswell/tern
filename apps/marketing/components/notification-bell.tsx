@@ -5,6 +5,7 @@ import Link from "next/link";
 import { collection, doc, limit, onSnapshot, orderBy, query, updateDoc, writeBatch } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import type { Notification } from "@/lib/types";
+import { PushToggle } from "./push-toggle";
 
 const MAX_NOTIFICATIONS = 25;
 
@@ -113,6 +114,8 @@ export function NotificationBell({ uid }: { uid: string }) {
               ))
             )}
           </div>
+
+          <PushToggle uid={uid} />
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import { notifyAdminOfReport } from "@/lib/report-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
+import { sendPushToUser } from "@/lib/push";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import {
   writeReadinessGateSubmission,
@@ -25,8 +26,8 @@ import type {
   UserRole,
 } from "@/lib/types";
 
-// Best-effort in-app notification write, mirroring an email already
-// sent to the same uid. Never throws on its own — every call site
+// Best-effort in-app notification write (plus Web Push), mirroring an
+// email already sent to the same uid. Never throws on its own — every call site
 // wraps this the same way it already wraps the corresponding email
 // send, so a Firestore write failure here can never block or fail the
 // underlying action. Exported (not private) because the closing-soon
@@ -51,6 +52,9 @@ export async function writeNotification(
       read: false,
       createdAt: FieldValue.serverTimestamp(),
     });
+  // Also push it to any device the user has turned notifications on
+  // for. sendPushToUser never throws, so this can't fail the write above.
+  await sendPushToUser(uid, { title, body, link, tag: kind });
 }
 
 // Called right after a job seeker profile is created, if they're under 18.
