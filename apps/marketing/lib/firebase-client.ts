@@ -1,5 +1,13 @@
 import { getApps, initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider, type Auth } from "firebase/auth";
+import {
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+  getAuth,
+  GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  initializeAuth,
+  type Auth,
+} from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -34,7 +42,21 @@ export function getClientAuth(): Auth {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase client config is missing — check NEXT_PUBLIC_FIREBASE_* env vars.");
   }
-  if (!auth) auth = getAuth(getClientApp());
+  if (!auth) {
+    // localStorage first, not getAuth()'s IndexedDB default: on iOS,
+    // the home-screen (PWA) app gets killed on swipe-up before
+    // Firebase's async IndexedDB write reliably lands, which logged
+    // users out on every relaunch. localStorage writes synchronously.
+    try {
+      auth = initializeAuth(getClientApp(), {
+        persistence: [browserLocalPersistence, indexedDBLocalPersistence],
+        popupRedirectResolver: browserPopupRedirectResolver,
+      });
+    } catch {
+      // Already initialized (e.g. dev hot reload) — reuse it.
+      auth = getAuth(getClientApp());
+    }
+  }
   return auth;
 }
 
