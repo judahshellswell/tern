@@ -10,7 +10,7 @@ import { notifyAdminOfReport } from "@/lib/report-notification";
 import { notifyEmployerOfApplication } from "@/lib/application-notification";
 import { sendStatusChangeNotification } from "@/lib/status-notification";
 import { getAdminFirestore, getAdminAuth, getAdminUid } from "@/lib/firebase-admin";
-import { sendPushToUser } from "@/lib/push";
+import { writeNotification } from "@/lib/notifications";
 import { ADMIN_EMAILS } from "@/lib/admin";
 import {
   writeReadinessGateSubmission,
@@ -19,43 +19,11 @@ import {
 } from "@/lib/readiness-gate";
 import type {
   ApplicationStatus,
-  NotificationKind,
   Parish,
   ReadinessRetakeDelay,
   Report,
   UserRole,
 } from "@/lib/types";
-
-// Best-effort in-app notification write (plus Web Push), mirroring an
-// email already sent to the same uid. Never throws on its own — every call site
-// wraps this the same way it already wraps the corresponding email
-// send, so a Firestore write failure here can never block or fail the
-// underlying action. Exported (not private) because the closing-soon
-// cron route handler isn't a "use server" module and needs to import
-// this directly.
-export async function writeNotification(
-  uid: string,
-  kind: NotificationKind,
-  title: string,
-  body: string,
-  link: string,
-): Promise<void> {
-  await getAdminFirestore()
-    .collection("users")
-    .doc(uid)
-    .collection("notifications")
-    .add({
-      kind,
-      title,
-      body,
-      link,
-      read: false,
-      createdAt: FieldValue.serverTimestamp(),
-    });
-  // Also push it to any device the user has turned notifications on
-  // for. sendPushToUser never throws, so this can't fail the write above.
-  await sendPushToUser(uid, { title, body, link, tag: kind });
-}
 
 // Called right after a job seeker profile is created, if they're under 18.
 // Failure here shouldn't block account creation — the account already

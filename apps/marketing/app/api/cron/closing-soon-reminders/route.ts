@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { sendClosingSoonReminder } from "@/lib/closing-reminder-notification";
-import { writeNotification } from "@/app/actions";
+import { writeNotification } from "@/lib/notifications";
 
 const REMINDER_DAYS_BEFORE = 3;
 
