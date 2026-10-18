@@ -20,7 +20,7 @@ const noteClasses = {
 
 export function JobTypes() {
   return (
-    <section className="-mt-10 bg-paper px-6 pb-18 sm:-mt-14">
+    <section className="bg-paper px-6 pb-18">
       <div className="mx-auto max-w-6xl">
         <p className="font-mono text-xs uppercase tracking-[0.1em] text-granite-soft">
           What&rsquo;s on Tern — deliberately not everything

@@ -7,12 +7,21 @@ import { useAuth } from "./auth/auth-provider";
 // light/dark toggle — a fixed brand moment at the top of the page. Uses
 // the --color-deep/--color-deep-raised tokens (globals.css) rather than
 // hardcoded hex, so it still shifts correctly between the two themes
-// instead of being pinned to one literal color pair.
+// instead of being pinned to one literal color pair. In light mode
+// --color-deep is a deep version of the tide teal (not a near-black),
+// so this reads as the brand color turned up, not an unrelated dark
+// surface — and the fade into --color-paper below is a true gradient
+// on the background itself, not a hard edge with a shape drawn over it.
 export function Hero() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative overflow-hidden bg-deep pb-32 text-[#faf8f4] sm:pb-40">
+    <section
+      className="relative overflow-hidden pb-32 text-[#faf8f4] sm:pb-40"
+      style={{
+        background: "linear-gradient(180deg, var(--color-deep) 0%, var(--color-deep) 62%, var(--color-paper) 100%)",
+      }}
+    >
       <HeroBackdrop />
       <div className="relative mx-auto grid max-w-6xl gap-12 px-6 pb-4 pt-16 md:grid-cols-[1.15fr_0.85fr] md:pt-24">
         <div className="animate-rise">
@@ -83,18 +92,6 @@ export function Hero() {
           <SnapshotCard />
         </div>
       </div>
-
-      {/* Angled wave bleeding into the next section, instead of a hard
-          rectangle edge — the page background color on each side so it
-          seams invisibly whichever theme is active. */}
-      <svg
-        className="pointer-events-none absolute -bottom-px left-0 h-[70px] w-full text-paper sm:h-[100px]"
-        viewBox="0 0 1360 100"
-        preserveAspectRatio="none"
-        aria-hidden="true"
-      >
-        <path d="M0 100 L0 40 Q 340 100 680 40 T 1360 30 L1360 100 Z" fill="currentColor" />
-      </svg>
     </section>
   );
 }
@@ -102,7 +99,13 @@ export function Hero() {
 function HeroBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
-      <div className="bg-grain absolute inset-0 opacity-[0.35]" />
+      <div
+        className="bg-grain absolute inset-0 opacity-[0.35]"
+        style={{
+          maskImage: "linear-gradient(180deg, black 0%, black 55%, transparent 80%)",
+          WebkitMaskImage: "linear-gradient(180deg, black 0%, black 55%, transparent 80%)",
+        }}
+      />
       <div className="absolute -right-44 -top-48 h-[640px] w-[640px] rounded-full bg-[radial-gradient(circle,rgba(95,194,184,0.28)_0%,transparent_70%)]" />
       <div className="absolute -bottom-32 -left-48 h-[480px] w-[480px] rounded-full bg-[radial-gradient(circle,rgba(227,168,92,0.2)_0%,transparent_70%)]" />
       <svg

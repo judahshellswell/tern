@@ -12,12 +12,14 @@
   --color-granite-soft: #8b9490;
   --color-border: #e4e0d6;
   --color-border-strong: #d3cdbe;
-  /* A dedicated near-black for the hero/footer band — deliberately
-     darker than --color-paper's dark-mode value, so that band reads as
-     a fixed brand moment in both themes rather than just "the page
-     background, but dark." */
-  --color-deep: #0a1513;
-  --color-deep-raised: #12211e;
+  /* A deep version of the tide brand teal, used for the hero band and
+     any bg-deep-raised card — reads as "tide, turned way up" rather
+     than an unrelated near-black dropped onto an otherwise warm,
+     light palette (that was the original version here, and read as
+     jarring/out of place — see the design canvas's F1 swatch for the
+     comparison that settled on this hue). */
+  --color-deep: #0d2e2b;
+  --color-deep-raised: #123a36;
 
   --font-serif: var(--font-fraunces), Iowan Old Style, Palatino Linotype, Georgia, serif;
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
