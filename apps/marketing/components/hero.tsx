@@ -3,32 +3,39 @@
 import Link from "next/link";
 import { useAuth } from "./auth/auth-provider";
 
+// Deliberately always dark, independent of the site's light/dark toggle —
+// a high-energy brand moment at the top of the page, not a themed surface.
+// Colors are the same tide/gorse tokens as the rest of the site, just the
+// fixed dark-mode values (see globals.css), so it stays on-palette even
+// though it isn't reading the CSS variables.
 export function Hero() {
   const { user, loading } = useAuth();
 
   return (
-    <section className="relative overflow-hidden border-b border-border">
-      <TideBackdrop />
-      <div className="relative mx-auto grid max-w-6xl gap-14 px-6 pb-20 pt-16 md:grid-cols-[1.1fr_0.9fr] md:pb-28 md:pt-24">
+    <section className="relative overflow-hidden bg-[#12211e] text-[#faf8f4]">
+      <DiagonalBackdrop />
+      <div className="relative mx-auto grid max-w-6xl gap-12 px-6 pb-20 pt-16 md:grid-cols-[1.15fr_0.85fr] md:pb-28 md:pt-24">
         <div className="animate-rise">
-          <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-border-strong bg-paper-raised px-3 py-1 font-mono text-xs uppercase tracking-[0.1em] text-tide">
-            <span className="h-1.5 w-1.5 rounded-full bg-gorse" />
+          <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.08em] text-[#e3a85c]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#e3a85c]" />
             Launching first in Jersey
           </p>
-          <h1 className="text-balance font-serif text-[2.6rem] font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-            Find your first move.
+          <h1 className="text-balance font-serif text-[3.2rem] font-bold leading-[0.96] tracking-tight sm:text-7xl">
+            Your first shift
+            <br />
+            starts <span className="text-[#5fc2b8]">here.</span>
           </h1>
-          <p className="mt-6 max-w-[46ch] text-lg text-granite">
-            Tern is Jersey&rsquo;s job platform for students and early-career
-            talent — verified part-time jobs, apprenticeships, internships
-            and seasonal work, built around potential, not experience.
+          <p className="mt-7 max-w-[42ch] text-lg leading-relaxed text-[#c9d1cc]">
+            Real part-time jobs, apprenticeships and seasonal work across
+            Jersey — built for students, not CVs. Verified, safe, and
+            genuinely yours.
           </p>
 
-          <div className="mt-10 flex flex-wrap items-center gap-4">
+          <div className="mt-9 flex flex-wrap items-center gap-5">
             {!loading && user ? (
               <Link
                 href="/dashboard"
-                className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+                className="rounded-full bg-[#e3a85c] px-7 py-4 text-[16px] font-extrabold text-[#12211e] transition-colors hover:bg-[#f0bb77]"
               >
                 Dashboard
               </Link>
@@ -36,13 +43,13 @@ export function Hero() {
               <>
                 <Link
                   href="/sign-up"
-                  className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
+                  className="rounded-full bg-[#e3a85c] px-7 py-4 text-[16px] font-extrabold text-[#12211e] transition-colors hover:bg-[#f0bb77]"
                 >
-                  Sign up
+                  Get started →
                 </Link>
                 <Link
                   href="/log-in"
-                  className="text-sm font-medium text-ink transition-colors hover:text-tide"
+                  className="text-sm font-semibold text-[#ede9e2] transition-colors hover:text-[#5fc2b8]"
                 >
                   Log in
                 </Link>
@@ -50,23 +57,23 @@ export function Hero() {
             )}
           </div>
 
-          <dl className="mt-10 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+          <dl className="mt-11 flex flex-wrap gap-2.5 text-sm">
             <div>
               <dt className="sr-only">Minimum age</dt>
-              <dd className="font-mono text-xs text-granite-soft">
-                16+, guardian-verified
+              <dd className="rounded-full border border-white/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-[#c9d1cc]">
+                16+ · guardian-verified
               </dd>
             </div>
             <div>
               <dt className="sr-only">Employer visibility</dt>
-              <dd className="font-mono text-xs text-granite-soft">
-                No employer browsing — ever
+              <dd className="rounded-full border border-white/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-[#c9d1cc]">
+                Zero employer browsing
               </dd>
             </div>
             <div>
               <dt className="sr-only">Cost</dt>
-              <dd className="font-mono text-xs text-granite-soft">
-                Free for job seekers
+              <dd className="rounded-full border border-white/20 px-3.5 py-1.5 font-mono text-xs font-semibold text-[#c9d1cc]">
+                Always free to apply
               </dd>
             </div>
           </dl>
@@ -80,27 +87,27 @@ export function Hero() {
   );
 }
 
-function TideBackdrop() {
+function DiagonalBackdrop() {
   return (
-    <div className="pointer-events-none absolute inset-0 -z-10" aria-hidden="true">
-      <div className="absolute -left-24 top-[-120px] h-[420px] w-[420px] rounded-full bg-tide/10 blur-3xl" />
-      <div className="absolute right-[-140px] top-[80px] h-[360px] w-[360px] rounded-full bg-gorse/10 blur-3xl" />
+    <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
+      <div className="absolute -right-56 -top-32 h-[480px] w-[480px] rotate-[18deg] rounded-[48px] bg-gradient-to-br from-[#1f5f5b] to-[#0f1c19] opacity-90" />
+      <div className="absolute -bottom-44 -left-40 h-[420px] w-[420px] rounded-full bg-[#b87418] opacity-[0.14] blur-[2px]" />
     </div>
   );
 }
 
 function SnapshotCard() {
   return (
-    <div className="mx-auto w-full max-w-sm rounded-[28px] border border-border-strong bg-paper-raised p-6 shadow-[0_1px_2px_rgba(18,33,30,0.06),0_24px_48px_-12px_rgba(18,33,30,0.18)]">
+    <div className="mx-auto w-full max-w-sm -rotate-[2deg] rounded-[28px] bg-[#faf8f4] p-6 text-[#12211e] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.45)]">
       <div className="flex items-center gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-tide font-serif text-lg font-semibold text-paper">
-          AM
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1f5f5b] font-serif text-lg font-bold text-[#faf8f4]">
+          JM
         </div>
         <div>
-          <p className="font-serif text-base font-semibold">Amelie Marett</p>
-          <p className="text-xs text-granite">St Helier · Sixth form, Yr 13</p>
+          <p className="font-serif text-base font-bold">Jayden Marsh</p>
+          <p className="text-xs text-[#6b7570]">St Saviour · Sixth form, Yr 12</p>
         </div>
-        <span className="ml-auto flex items-center gap-1 rounded-full bg-tide/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-tide">
+        <span className="ml-auto flex items-center gap-1 rounded-full bg-[#1f5f5b]/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-[#1f5f5b]">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
               d="M20 6 9 17l-5-5"
@@ -114,46 +121,21 @@ function SnapshotCard() {
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2 text-center">
-        {[
-          ["6", "Skills"],
-          ["Wknds", "Availability"],
-          ["GCSE+", "Level"],
-        ].map(([value, label]) => (
-          <div key={label} className="rounded-xl bg-paper px-2 py-3">
-            <p className="font-serif text-lg font-semibold tabular-nums">{value}</p>
-            <p className="font-mono text-[10px] uppercase tracking-wide text-granite-soft">
-              {label}
-            </p>
-          </div>
-        ))}
+      <div className="mt-[18px] rounded-2xl bg-[#e3a85c] px-4 py-3.5 text-[13px] font-bold text-[#12211e]">
+        🔥 3 new jobs match you this week
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-1.5">
-        {["Customer service", "Teamwork", "Reliability"].map((skill) => (
+      <div className="mt-3.5 flex flex-wrap gap-1.5">
+        {["Lifeguarding", "Café work"].map((skill) => (
           <span
             key={skill}
-            className="rounded-full bg-tide px-2.5 py-1 text-xs font-medium text-paper"
+            className="rounded-full bg-[#1f5f5b] px-2.5 py-1 text-xs font-semibold text-[#faf8f4]"
           >
             {skill}
           </span>
         ))}
-        {["Photography", "Netball"].map((interest) => (
-          <span
-            key={interest}
-            className="rounded-full border border-border-strong px-2.5 py-1 text-xs font-medium text-granite"
-          >
-            {interest}
-          </span>
-        ))}
-      </div>
-
-      <div className="mt-5 rounded-xl border border-dashed border-border-strong px-3 py-2.5 text-xs text-granite">
-        Recommended for:{" "}
-        <span className="font-medium text-ink">Weekend retail assistant</span>
-        <br />
-        <span className="text-granite-soft">
-          because your customer service and teamwork skills match this role
+        <span className="rounded-full border border-[#d9d2c3] px-2.5 py-1 text-xs font-semibold text-[#44504a]">
+          Rugby
         </span>
       </div>
     </div>
