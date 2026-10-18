@@ -12,12 +12,11 @@
   --color-granite-soft: #8b9490;
   --color-border: #e4e0d6;
   --color-border-strong: #d3cdbe;
-  /* A deep version of the tide brand teal, used for the hero band and
-     any bg-deep-raised card — reads as "tide, turned way up" rather
-     than an unrelated near-black dropped onto an otherwise warm,
-     light palette (that was the original version here, and read as
-     jarring/out of place — see the design canvas's F1 swatch for the
-     comparison that settled on this hue). */
+  /* A dark tide-green card surface (bg-deep-raised) used sparingly in
+     light mode for a single accent card — e.g. the "For job seekers"
+     step card on the homepage — never for large page regions like the
+     hero, which uses the normal light palette like the rest of the
+     site. Same hue family as --color-tide, just driven dark. */
   --color-deep: #0d2e2b;
   --color-deep-raised: #123a36;
 
@@ -37,12 +36,12 @@
   --color-granite-soft: #7c8781;
   --color-border: #243b36;
   --color-border-strong: #304c46;
-  /* In dark mode --color-paper is already near-black, so --color-deep
-     needs its own even-darker step (not the same value) or the hero and
-     any bg-deep-raised card vanish into the page background — a real
-     bug found when checking the redesign in dark mode. */
-  --color-deep: #050a09;
-  --color-deep-raised: #0a1513;
+  /* Dark mode's card surfaces are already a dark green family — keep
+     --color-deep-raised in that same family (close to paper-raised)
+     rather than a separate near-black step, so the "For job seekers"
+     card reads as part of the normal dark palette, not a distinct tone. */
+  --color-deep: #0a1513;
+  --color-deep-raised: #1a2e29;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -58,8 +57,8 @@
     --color-granite-soft: #7c8781;
     --color-border: #243b36;
     --color-border-strong: #304c46;
-    --color-deep: #050a09;
-    --color-deep-raised: #0a1513;
+    --color-deep: #0a1513;
+    --color-deep-raised: #1a2e29;
   }
 }
 
