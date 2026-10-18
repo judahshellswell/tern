@@ -1,7 +1,7 @@
 const jobSeekerSteps = [
   {
     title: "Build your Potential Snapshot",
-    body: "Skills, interests, qualifications, portfolio, even a short video intro — the things that show who you are, not just where you've worked.",
+    body: "Skills, interests, qualifications, portfolio — the things that show who you are, not just where you've worked.",
   },
   {
     title: "Get verified, with a guardian if you're 16 or 17",
@@ -30,17 +30,21 @@ const employerSteps = [
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="border-b border-border px-6 py-20 sm:py-28">
-      <div className="mx-auto max-w-6xl">
+    <section id="how-it-works" className="relative overflow-hidden border-b border-border px-6 py-20 sm:py-28">
+      <div
+        className="pointer-events-none absolute -right-20 -top-20 h-[420px] w-[420px] rounded-full bg-[radial-gradient(circle,rgba(31,95,91,0.08)_0%,transparent_70%)]"
+        aria-hidden="true"
+      />
+      <div className="relative mx-auto max-w-6xl">
         <SectionHeading
           eyebrow="How it works"
           title="Two sides, one honest process."
           lede="Whether you're starting out or hiring someone who is, Tern keeps the path short and the trust real."
         />
 
-        <div className="mt-14 grid gap-10 md:grid-cols-2 md:gap-14">
-          <StepList label="For job seekers" steps={jobSeekerSteps} accent="tide" />
-          <StepList label="For employers" steps={employerSteps} accent="gorse" />
+        <div className="mt-14 grid gap-8 md:grid-cols-2">
+          <StepCard label="For job seekers" steps={jobSeekerSteps} variant="dark" />
+          <StepCard label="For employers" steps={employerSteps} variant="light" />
         </div>
       </div>
     </section>
@@ -67,35 +71,48 @@ export function SectionHeading({
   );
 }
 
-function StepList({
+function StepCard({
   label,
   steps,
-  accent,
+  variant,
 }: {
   label: string;
   steps: { title: string; body: string }[];
-  accent: "tide" | "gorse";
+  variant: "dark" | "light";
 }) {
+  const isDark = variant === "dark";
+
   return (
-    <div>
-      <h3 className="font-mono text-xs uppercase tracking-[0.1em] text-granite-soft">
+    <div
+      className={`relative overflow-hidden rounded-[24px] border p-8 ${
+        isDark ? "border-tide/20 bg-deep-raised text-[#ede9e2]" : "border-border bg-paper-raised"
+      }`}
+    >
+      {isDark && <div className="bg-grain pointer-events-none absolute inset-0 opacity-[0.25]" aria-hidden="true" />}
+      <h3
+        className={`relative font-mono text-xs uppercase tracking-[0.1em] ${
+          isDark ? "text-tide" : "text-gorse"
+        }`}
+      >
         {label}
       </h3>
-      <ol className="mt-5 space-y-6">
+      <ol className="relative mt-5 space-y-5">
         {steps.map((step, i) => (
           <li key={step.title} className="flex gap-4">
             <span
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full font-mono text-sm font-semibold tabular-nums ${
-                accent === "tide"
-                  ? "bg-tide/10 text-tide"
-                  : "bg-gorse-bg text-gorse"
+              className={`shrink-0 font-serif text-[22px] font-bold tabular-nums ${
+                isDark ? "text-tide" : "text-gorse"
               }`}
             >
-              {i + 1}
+              {String(i + 1).padStart(2, "0")}
             </span>
             <div>
-              <p className="font-semibold text-ink">{step.title}</p>
-              <p className="mt-1 text-[15px] text-granite">{step.body}</p>
+              <p className={`font-semibold ${isDark ? "text-[#ede9e2]" : "text-ink"}`}>
+                {step.title}
+              </p>
+              <p className={`mt-1 text-[13.5px] ${isDark ? "text-[#c9d1cc]" : "text-granite"}`}>
+                {step.body}
+              </p>
             </div>
           </li>
         ))}

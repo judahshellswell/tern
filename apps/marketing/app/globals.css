@@ -12,6 +12,12 @@
   --color-granite-soft: #8b9490;
   --color-border: #e4e0d6;
   --color-border-strong: #d3cdbe;
+  /* A dedicated near-black for the hero/footer band — deliberately
+     darker than --color-paper's dark-mode value, so that band reads as
+     a fixed brand moment in both themes rather than just "the page
+     background, but dark." */
+  --color-deep: #0a1513;
+  --color-deep-raised: #12211e;
 
   --font-serif: var(--font-fraunces), Iowan Old Style, Palatino Linotype, Georgia, serif;
   --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -29,6 +35,12 @@
   --color-granite-soft: #7c8781;
   --color-border: #243b36;
   --color-border-strong: #304c46;
+  /* In dark mode --color-paper is already near-black, so --color-deep
+     needs its own even-darker step (not the same value) or the hero and
+     any bg-deep-raised card vanish into the page background — a real
+     bug found when checking the redesign in dark mode. */
+  --color-deep: #050a09;
+  --color-deep-raised: #0a1513;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -44,6 +56,8 @@
     --color-granite-soft: #7c8781;
     --color-border: #243b36;
     --color-border-strong: #304c46;
+    --color-deep: #050a09;
+    --color-deep-raised: #0a1513;
   }
 }
 
@@ -59,6 +73,8 @@
   --color-granite-soft: var(--color-granite-soft);
   --color-border: var(--color-border);
   --color-border-strong: var(--color-border-strong);
+  --color-deep: var(--color-deep);
+  --color-deep-raised: var(--color-deep-raised);
 
   --font-serif: var(--font-serif);
   --font-sans: var(--font-sans);
@@ -120,4 +136,13 @@
 
 .animate-rise {
   animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* A subtle dot-grain texture for large flat color fields (hero, footer,
+   section washes) — breaks up what would otherwise be a dead-flat
+   rectangle. Color is fixed (not ink/paper-based) since it's applied at
+   low opacity over both light and dark surfaces throughout the page. */
+.bg-grain {
+  background-image: radial-gradient(circle at 1px 1px, rgba(127, 127, 127, 0.4) 1px, transparent 0);
+  background-size: 18px 18px;
 }
