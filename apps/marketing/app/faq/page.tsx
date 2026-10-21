@@ -7,7 +7,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "FAQ — Tern",
   description:
-    "Answers to common questions about verification, safety, guardian consent, and how Tern works for job seekers and employers in Jersey.",
+    "Answers to common questions about verification, safety, and how Tern works for job seekers and employers in Jersey.",
 };
 
 const groups: { heading: string; items: { q: string; a: string }[] }[] = [
@@ -16,11 +16,7 @@ const groups: { heading: string; items: { q: string; a: string }[] }[] = [
     items: [
       {
         q: "Is this safe for my 16 or 17 year old?",
-        a: "It's built specifically with that age group in mind. Anyone 16 or 17 needs a parent or guardian to confirm they know their child is using Tern before the account can go further than building a profile. There's no open messaging anywhere on the platform, and employers can only ever see people who've applied to their own vacancies — never a searchable list of candidates.",
-      },
-      {
-        q: "How does guardian consent actually work?",
-        a: "When a 16 or 17 year old signs up, we ask for a parent or guardian's name and email. That guardian gets a simple email with a one-tap confirmation — no account or app needed on their end. The job seeker can build their profile while this is pending, but can't apply to a job until both guardian consent and identity verification are complete.",
+        a: "Every job seeker is identity-verified before they can apply to anything. There's no open messaging anywhere on the platform, and employers can only ever see people who've applied to their own vacancies — never a searchable list of candidates.",
       },
       {
         q: "Can employers message candidates directly?",
@@ -49,7 +45,7 @@ const groups: { heading: string; items: { q: string; a: string }[] }[] = [
       },
       {
         q: "What's the minimum age?",
-        a: "16, with guardian consent required for 16 and 17 year olds.",
+        a: "16.",
       },
     ],
   },

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import type { JobType, Parish, UserRole } from "@/lib/types";
-import { isUnder18, isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/lib/types";
+import { isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEmail } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
-import { notifyGuardian, notifyAdminOfSignup } from "@/app/actions";
+import { notifyAdminOfSignup } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
@@ -30,7 +30,6 @@ export function SignUpForm() {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
-  const [guardianEmail, setGuardianEmail] = useState("");
   const [location, setLocation] = useState<Parish | "">("");
   const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>([]);
   const [businessName, setBusinessName] = useState("");
@@ -40,7 +39,6 @@ export function SignUpForm() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileError, setLogoFileError] = useState("");
 
-  const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
   const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
 
   function chooseRole(nextRole: UserRole) {
@@ -127,18 +125,12 @@ export function SignUpForm() {
           {
             displayName,
             dateOfBirth,
-            guardianEmail,
             location,
             preferredJobTypes,
             idDocumentPath,
           },
           emailVerified,
         );
-        if (under18 && guardianEmail) {
-          // Best-effort — the account is already created either way, and
-          // the form doesn't block on or surface failures from this.
-          void getIdToken().then(notifyGuardian);
-        }
         void getIdToken().then(notifyAdminOfSignup);
       } else if (logoFile) {
         const { path: logoPath } = await uploadEmployerLogo(uid, logoFile);
@@ -287,21 +279,6 @@ export function SignUpForm() {
               once you turn {MINIMUM_AGE} &mdash; we&rsquo;d love to have
               you then.
             </p>
-          )}
-          {dateOfBirth && under18 && !underMinimumAge && (
-            <>
-              <Field
-                label="Parent or guardian email"
-                type="email"
-                value={guardianEmail}
-                onChange={setGuardianEmail}
-                placeholder="parent@example.je"
-              />
-              <p className="-mt-1 text-xs text-granite-soft">
-                Since you&rsquo;re under 18, we&rsquo;ll let your parent or
-                guardian know you&rsquo;ve joined Tern.
-              </p>
-            </>
           )}
           <ParishSelect id="signup-location" label="Location" value={location} onChange={setLocation} />
           <div>

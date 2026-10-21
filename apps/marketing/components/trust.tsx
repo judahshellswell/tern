@@ -5,11 +5,6 @@ const pillars = [
     accent: "tide" as const,
   },
   {
-    title: "Guardian consent for 16 &amp; 17 year olds",
-    body: "A parent or guardian confirms they know their child is using Tern, before an account can go further than building a profile.",
-    accent: "tide" as const,
-  },
-  {
     title: "No employer browsing, ever",
     body: "Employers only ever see candidates who applied to their own vacancies. There's no search-by-candidate feature anywhere in Tern — by design, not by setting.",
     accent: "tide" as const,
@@ -36,19 +31,6 @@ export function Trust() {
             model isn&rsquo;t a feature list bolted on afterward — it&rsquo;s
             the architecture.
           </p>
-          <div className="mt-8 inline-flex w-fit items-center gap-3 rounded-2xl bg-gorse-bg px-5 py-4">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0 text-gorse">
-              <path
-                d="M12 2 20 6v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="text-[13px] font-bold text-gorse">
-              Guardian consent required, 16–17
-            </span>
-          </div>
         </div>
 
         <div className="relative flex flex-col">

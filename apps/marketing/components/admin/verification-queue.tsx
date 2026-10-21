@@ -91,9 +91,6 @@ export function AdminVerificationQueue() {
               <>
                 <DetailRow label="Date of birth" value={profile.dateOfBirth} />
                 <DetailRow label="Location" value={profile.location} />
-                {profile.guardianEmail && (
-                  <DetailRow label="Guardian email" value={profile.guardianEmail} />
-                )}
               </>
             ) : (
               <>

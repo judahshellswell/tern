@@ -77,7 +77,7 @@ export function Hero() {
             <div>
               <dt className="sr-only">Minimum age</dt>
               <dd className="rounded-full border border-border-strong px-3.5 py-1.5 font-mono text-xs font-semibold text-granite">
-                16+ · guardian-verified
+                16+ to apply
               </dd>
             </div>
             <div>

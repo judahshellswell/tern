@@ -116,12 +116,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
         <DetailRow label="Email" value={reportedProfile.email} />
         <DetailRow label="Location" value={reportedProfile.location} />
         {reportedProfile.role === "job_seeker" ? (
-          <>
-            <DetailRow label="Date of birth" value={reportedProfile.dateOfBirth} />
-            {reportedProfile.guardianEmail && (
-              <DetailRow label="Guardian email" value={reportedProfile.guardianEmail} />
-            )}
-          </>
+          <DetailRow label="Date of birth" value={reportedProfile.dateOfBirth} />
         ) : (
           <DetailRow label="Registration no." value={reportedProfile.registrationNumber} />
         )}

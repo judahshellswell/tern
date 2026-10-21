@@ -1,7 +1,6 @@
 "use server";
 
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
-import { sendGuardianNotification } from "@/lib/guardian-notification";
 import { notifyAdminOfPendingVerification } from "@/lib/admin-notification";
 import { sendRejectionNotification } from "@/lib/rejection-notification";
 import { sendBanNotification } from "@/lib/ban-notification";
@@ -34,41 +33,11 @@ import type {
 
 const NOT_AUTHORIZED = { ok: false, error: "Not authorized." } as const;
 
-// Called right after a job seeker profile is created, if they're under 18.
-// Failure here shouldn't block account creation — the account already
-// exists in Firestore by the time this runs — so callers should treat
-// this as best-effort and not surface a hard error to the user. The
-// guardian's address and the seeker's name come from the caller's own
-// profile, and it only ever sends once per account, so this can't be
-// used to send Tern-branded email to arbitrary addresses.
-export async function notifyGuardian(idToken: string) {
-  try {
-    const { uid } = await requireUser(idToken);
-    const ref = getAdminFirestore().collection("users").doc(uid);
-    const profile = (await ref.get()).data();
-    if (
-      !profile ||
-      profile.role !== "job_seeker" ||
-      typeof profile.guardianEmail !== "string" ||
-      !profile.guardianEmail ||
-      profile.guardianNotifiedAt
-    ) {
-      return { ok: false } as const;
-    }
-    await ref.update({ guardianNotifiedAt: FieldValue.serverTimestamp() });
-    await sendGuardianNotification({ guardianEmail: profile.guardianEmail, jobSeekerName: profile.displayName });
-    return { ok: true } as const;
-  } catch (err) {
-    console.error("Failed to send guardian notification:", err);
-    return { ok: false } as const;
-  }
-}
-
 // Called right after any job seeker or employer profile is created (or
 // resubmitted after rejection), so the admin doesn't have to poll /admin
-// to know something is waiting. Same best-effort contract as
-// notifyGuardian — never blocks account creation. Details come from the
-// caller's own profile, and only while it's actually pending.
+// to know something is waiting. Best-effort — never blocks account
+// creation. Details come from the caller's own profile, and only while
+// it's actually pending.
 export async function notifyAdminOfSignup(idToken: string) {
   try {
     const { uid } = await requireUser(idToken);
@@ -317,7 +286,7 @@ export type ApplicantProfileForEmployer = {
 // (they can already read applicantName off a real application) — this
 // action just returns more fields (location, portfolio) once that same
 // relationship is confirmed. Never returns idDocumentPath, dateOfBirth,
-// guardianEmail, or email.
+// or email.
 export async function getApplicantProfileForEmployer(
   idToken: string,
   applicantId: string,
@@ -776,7 +745,6 @@ export type ReportDetailForAdmin = {
         displayName: string;
         email: string;
         dateOfBirth: string;
-        guardianEmail: string | null;
         location: string;
         preferredJobTypes?: string[];
         verificationStatus: string;
@@ -829,7 +797,6 @@ export async function getReportDetailForAdmin(
           displayName: profile.displayName,
           email: profile.email,
           dateOfBirth: profile.dateOfBirth,
-          guardianEmail: profile.guardianEmail,
           location: profile.location,
           preferredJobTypes: profile.preferredJobTypes,
           verificationStatus: profile.verificationStatus,

@@ -1,11 +1,10 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { getClientFirestore } from "./firebase-client";
-import { isFreeEmailDomain, isUnder18, type JobType, type Parish, type UserProfile } from "./types";
+import { isFreeEmailDomain, type JobType, type Parish, type UserProfile } from "./types";
 
 export type JobSeekerSignupDetails = {
   displayName: string;
   dateOfBirth: string;
-  guardianEmail: string;
   location: Parish;
   preferredJobTypes: JobType[];
   idDocumentPath: string;
@@ -24,7 +23,6 @@ export async function createJobSeekerProfile(
   details: JobSeekerSignupDetails,
   emailVerified: boolean,
 ): Promise<void> {
-  const under18 = isUnder18(details.dateOfBirth);
   const ref = doc(getClientFirestore(), "users", uid);
   await setDoc(ref, {
     role: "job_seeker",
@@ -32,7 +30,6 @@ export async function createJobSeekerProfile(
     email,
     displayName: details.displayName,
     dateOfBirth: details.dateOfBirth,
-    guardianEmail: under18 ? details.guardianEmail : null,
     location: details.location,
     preferredJobTypes: details.preferredJobTypes,
     idDocumentPath: details.idDocumentPath,

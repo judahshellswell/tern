@@ -4,8 +4,8 @@ const jobSeekerSteps = [
     body: "Skills, interests, qualifications, portfolio — the things that show who you are, not just where you've worked.",
   },
   {
-    title: "Get verified, with a guardian if you're 16 or 17",
-    body: "A quick ID check, plus a simple consent step for a parent or guardian. No stranger reaches you until this is done.",
+    title: "Get verified",
+    body: "A quick ID check — no stranger reaches you until this is done.",
   },
   {
     title: "Apply in one tap",

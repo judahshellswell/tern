@@ -16,7 +16,7 @@ export default function TermsPage() {
         <PageHeader
           eyebrow="Legal"
           title="Terms of service"
-          lede="Last updated 26 August 2026. We're a small, early platform in Jersey — this describes how Tern actually works today. It isn't a substitute for formal legal advice, and we'll expand it as the platform grows."
+          lede="Last updated 21 October 2026. We're a small, early platform in Jersey — this describes how Tern actually works today. It isn't a substitute for formal legal advice, and we'll expand it as the platform grows."
         />
 
         <section className="px-6 py-16 sm:py-20">
@@ -24,10 +24,8 @@ export default function TermsPage() {
             <div>
               <h2 className="font-serif text-xl font-semibold">Who can use Tern</h2>
               <p className="mt-3 text-granite">
-                Job seekers must be 16 or older. If you&rsquo;re 16 or 17,
-                a parent or guardian must confirm they know you&rsquo;re
-                using Tern before you can apply to any job. Employers must
-                be a real, verifiable business.
+                Job seekers must be 16 or older. Employers must be a
+                real, verifiable business.
               </p>
             </div>
 

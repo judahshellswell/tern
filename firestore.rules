@@ -84,7 +84,7 @@ service cloud.firestore {
         // Lightweight self-edit for an already-approved user fixing their
         // own details (name/business name/location/logo) — saves
         // immediately, no re-verification. Deliberately excludes
-        // idDocumentPath/dateOfBirth/guardianEmail (job seeker) — those
+        // idDocumentPath/dateOfBirth (job seeker) — those
         // stay reachable only via the reject/resubmit branch above, since
         // re-verifying identity documents outside that flow has real
         // safeguarding weight a simple typo fix shouldn't carry.

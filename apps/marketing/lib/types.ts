@@ -27,7 +27,6 @@ export type JobSeekerProfile = {
   email: string;
   displayName: string;
   dateOfBirth: string; // ISO date, e.g. "2009-04-12"
-  guardianEmail: string | null; // required if under 18 at signup
   location: Parish;
   // Up to 3 job types the seeker is most interested in, set at signup and
   // editable afterward. Used only to boost matching jobs toward the top
@@ -198,10 +197,6 @@ function isUnderAge(dateOfBirth: string, age: number): boolean {
   const dob = new Date(dateOfBirth);
   const nthBirthday = new Date(dob.getFullYear() + age, dob.getMonth(), dob.getDate());
   return Date.now() < nthBirthday.getTime();
-}
-
-export function isUnder18(dateOfBirth: string): boolean {
-  return isUnderAge(dateOfBirth, 18);
 }
 
 export const MINIMUM_AGE = 16;

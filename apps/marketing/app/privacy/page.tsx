@@ -16,7 +16,7 @@ export default function PrivacyPage() {
         <PageHeader
           eyebrow="Legal"
           title="Privacy policy"
-          lede="Last updated 26 August 2026. This describes what Tern collects today. We're a small, early platform in Jersey, and this will be reviewed against Jersey's data protection law (the DPJL) as we grow — it isn't a substitute for formal legal advice."
+          lede="Last updated 21 October 2026. This describes what Tern collects today. We're a small, early platform in Jersey, and this will be reviewed against Jersey's data protection law (the DPJL) as we grow — it isn't a substitute for formal legal advice."
         />
 
         <section className="px-6 py-16 sm:py-20">
@@ -25,11 +25,10 @@ export default function PrivacyPage() {
               <h2 className="font-serif text-xl font-semibold">What we collect</h2>
               <p className="mt-3 text-granite">
                 When you create an account, we collect: for job seekers,
-                your name, date of birth, location, and (if you&rsquo;re
-                16 or 17) a parent or guardian&rsquo;s email for consent;
-                for employers, your business name and registration
-                number. When you post a job or apply to one, we store
-                that job or application.
+                your name, date of birth, and location; for employers,
+                your business name and registration number. When you
+                post a job or apply to one, we store that job or
+                application.
               </p>
             </div>
 
@@ -53,16 +52,6 @@ export default function PrivacyPage() {
                 about your account or Tern&rsquo;s launch. We don&rsquo;t
                 sell your data, and employers never see job seeker data
                 beyond what a candidate submits when they apply.
-              </p>
-            </div>
-
-            <div>
-              <h2 className="font-serif text-xl font-semibold">Guardian consent</h2>
-              <p className="mt-3 text-granite">
-                If you&rsquo;re 16 or 17, we ask for a parent or
-                guardian&rsquo;s email so they can confirm they know
-                you&rsquo;re using Tern. We use that email only for
-                consent and account-related communication.
               </p>
             </div>
 

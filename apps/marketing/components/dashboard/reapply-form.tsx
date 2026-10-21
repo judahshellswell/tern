@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import {
-  isUnder18,
   isUnderMinimumAge,
   JOB_TYPE_LABELS,
   MINIMUM_AGE,
@@ -33,9 +32,6 @@ export function ReapplyForm({
   const [dateOfBirth, setDateOfBirth] = useState(
     profile.role === "job_seeker" ? profile.dateOfBirth : "",
   );
-  const [guardianEmail, setGuardianEmail] = useState(
-    profile.role === "job_seeker" ? (profile.guardianEmail ?? "") : "",
-  );
   const [businessName, setBusinessName] = useState(
     profile.role === "employer" ? profile.businessName : "",
   );
@@ -53,7 +49,6 @@ export function ReapplyForm({
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
-  const under18 = dateOfBirth ? isUnder18(dateOfBirth) : false;
   const underMinimumAge = dateOfBirth ? isUnderMinimumAge(dateOfBirth) : false;
 
   function togglePreferredJobType(type: JobType) {
@@ -92,7 +87,6 @@ export function ReapplyForm({
           {
             displayName,
             dateOfBirth,
-            guardianEmail,
             location,
             preferredJobTypes,
             idDocumentPath,
@@ -146,14 +140,6 @@ export function ReapplyForm({
               <p role="alert" className="-mt-1 rounded-lg bg-gorse-bg px-3 py-2 text-xs text-gorse">
                 You need to be at least {MINIMUM_AGE} to use Tern.
               </p>
-            )}
-            {dateOfBirth && under18 && !underMinimumAge && (
-              <Field
-                label="Parent or guardian email"
-                type="email"
-                value={guardianEmail}
-                onChange={setGuardianEmail}
-              />
             )}
             <ParishSelect id="reapply-location" label="Location" value={location} onChange={setLocation} />
             <div>
