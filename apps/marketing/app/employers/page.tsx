@@ -37,7 +37,7 @@ const faqs = [
   },
   {
     q: "Can I search or browse candidates directly?",
-    a: "No — by design. You only ever see people who've applied to your own vacancies. It's the clearest way we can promise candidates, and their parents, that Tern isn't a place to be found by strangers.",
+    a: "No — by design. You only ever see people who've applied to your own vacancies. It's the clearest way we can promise candidates that Tern isn't a place to be found by strangers.",
   },
   {
     q: "How long does verification take?",

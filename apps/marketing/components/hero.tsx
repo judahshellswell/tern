@@ -21,13 +21,13 @@ export function Hero() {
             Launching first in Jersey
           </p>
           <h1 className="text-balance font-serif text-[3.2rem] font-bold leading-[0.96] tracking-tight sm:text-7xl">
-            Your first shift
+            Your next shift
             <br />
             starts <span className="text-tide">here.</span>
           </h1>
           <p className="mt-7 max-w-[42ch] text-lg leading-relaxed text-granite">
             Real part-time jobs, apprenticeships and seasonal work across
-            Jersey — built for students, not CVs. Verified, safe, and
+            Jersey — built on potential, not CVs. Verified, safe, and
             genuinely yours.
           </p>
 
@@ -130,7 +130,7 @@ function SnapshotCard() {
           </div>
           <div>
             <p className="font-serif text-base font-bold">Jayden Marsh</p>
-            <p className="text-xs text-granite">St Saviour · Sixth form, Yr 12</p>
+            <p className="text-xs text-granite">St Saviour · Hospitality & retail</p>
           </div>
           <span className="ml-auto flex items-center gap-1 rounded-full bg-tide/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wide text-tide">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" aria-hidden="true">

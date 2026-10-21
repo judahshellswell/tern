@@ -40,8 +40,8 @@ export function JobTypes() {
         </div>
         <p className="mt-6 max-w-[60ch] text-sm text-granite">
           No senior roles, no generic job-board sprawl. Tern is built for
-          career stage, not age — school leavers, students, apprentices, and
-          anyone taking their first real step.
+          career stage, not age — anyone taking their next step into
+          part-time or entry-level work, whatever stage of life they&rsquo;re at.
         </p>
       </div>
     </section>

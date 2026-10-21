@@ -17,27 +17,27 @@ export default function AboutPage() {
       <main className="flex-1">
         <PageHeader
           eyebrow="About Tern"
-          title="The first step deserves a real chance."
-          lede="Most recruitment tools are built for people who already have a career. Tern is built for the moment before one starts."
+          title="Potential deserves a real chance."
+          lede="Most recruitment tools are built for people who already have a long work history. Tern is built for everyone else."
         />
 
         <section className="border-b border-border px-6 py-16 sm:py-20">
           <div className="mx-auto max-w-2xl space-y-6 text-[17px] leading-relaxed text-ink">
             <p>
-              If you&rsquo;re 16, or 19, or starting again at 24, the
-              problem is the same: every job platform is built around work
-              history you don&rsquo;t have yet. Job boards filter on
-              experience. Recruiters look for a track record. And the
-              people most capable of surprising an employer &mdash;
-              reliable, curious, ready to learn &mdash; get filtered out
-              before anyone actually looks at them.
+              Whether you&rsquo;re 16, or starting again at 40, the problem
+              is the same: every job platform is built around work history
+              you might not have, or might not have in this field. Job
+              boards filter on experience. Recruiters look for a track
+              record. And the people most capable of surprising an
+              employer &mdash; reliable, curious, ready to learn &mdash;
+              get filtered out before anyone actually looks at them.
             </p>
             <p>
               Tern exists to fix that specific problem. Not senior hiring,
-              not general recruitment &mdash; just the first real step:
-              part-time jobs, apprenticeships, internships, temporary and
-              seasonal work. The roles where potential should matter more
-              than a CV can show.
+              not general recruitment &mdash; just part-time jobs,
+              apprenticeships, internships, temporary and seasonal work.
+              The roles where potential should matter more than a CV can
+              show.
             </p>
           </div>
         </section>
@@ -55,14 +55,14 @@ export default function AboutPage() {
               of place where trust matters more than in a market where
               nobody knows anybody. That&rsquo;s exactly why we&rsquo;re
               starting here. We can verify every employer by hand. We can
-              talk to schools and colleges directly. We can get it right
-              at a scale where getting it wrong would be immediately
-              obvious &mdash; before taking that same care to Guernsey, to
-              the wider Channel Islands, and eventually the UK.
+              talk to the community directly. We can get it right at a
+              scale where getting it wrong would be immediately obvious
+              &mdash; before taking that same care to Guernsey, to the
+              wider Channel Islands, and eventually the UK.
             </p>
             <p>
               It&rsquo;s not a limitation. It&rsquo;s the only honest way
-              to build something people should trust with their first job.
+              to build something people should trust with their next job.
             </p>
           </div>
         </section>
@@ -80,9 +80,8 @@ export default function AboutPage() {
               character say more about what they&rsquo;ll become than
               where they&rsquo;ve already worked. So Tern is built around
               a Potential Snapshot, not a CV &mdash; and around
-              verification and safety that make it genuinely trustworthy
-              for someone taking their very first step, and for the
-              parents and guardians backing them.
+              verification and safety that make it genuinely trustworthy,
+              whoever&rsquo;s using it.
             </p>
           </div>
         </section>
@@ -91,7 +90,7 @@ export default function AboutPage() {
           <div className="mx-auto max-w-2xl">
             <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Get started</p>
             <h2 className="mt-3 text-balance font-serif text-3xl font-semibold tracking-tight sm:text-4xl">
-              Ready to take the first step?
+              Ready to take the next step?
             </h2>
             <Link
               href="/sign-up"

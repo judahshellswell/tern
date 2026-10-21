@@ -18,7 +18,7 @@ export default function ContactPage() {
         <PageHeader
           eyebrow="Get in touch"
           title="Questions? We read every email."
-          lede="Whether you're a student, a parent, an employer, or just curious about Tern — send us a message and we'll get back to you."
+          lede="Whether you're a job seeker, a parent, an employer, or just curious about Tern — send us a message and we'll get back to you."
         />
 
         <section className="px-6 py-16 sm:py-20">

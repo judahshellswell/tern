@@ -18,14 +18,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tern — Part-time & entry-level jobs for Jersey students",
+  title: "Tern — Part-time & entry-level jobs in Jersey",
   description:
-    "Tern connects verified Jersey students and early-career talent with verified employers — part-time jobs, apprenticeships, internships and seasonal work, built on potential, not experience.",
+    "Tern connects verified job seekers and early-career talent with verified employers — part-time jobs, apprenticeships, internships and seasonal work, built on potential, not experience.",
   metadataBase: new URL("https://tern.je"),
   openGraph: {
-    title: "Tern — Part-time & entry-level jobs for Jersey students",
+    title: "Tern — Part-time & entry-level jobs in Jersey",
     description:
-      "The trusted way for Jersey's students and early-career talent to find part-time and entry-level work.",
+      "The trusted way to find part-time and entry-level work in Jersey.",
     url: "https://tern.je",
     siteName: "Tern",
     locale: "en_GB",

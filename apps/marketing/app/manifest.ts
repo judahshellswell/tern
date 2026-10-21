@@ -5,10 +5,10 @@ import type { MetadataRoute } from "next";
 // has added to their home screen (iOS 16.4+).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Tern — Jersey jobs for students",
+    name: "Tern — Jersey jobs",
     short_name: "Tern",
     description:
-      "Part-time jobs, apprenticeships, internships and seasonal work for Jersey's students and early-career talent.",
+      "Part-time jobs, apprenticeships, internships and seasonal work in Jersey, for job seekers and early-career talent.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",

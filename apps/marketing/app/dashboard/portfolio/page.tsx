@@ -81,7 +81,7 @@ function Portfolio() {
         <div className="rounded-2xl border border-border-strong bg-paper-raised p-8 text-center">
           <p className="font-serif text-lg font-semibold">Nothing here yet</p>
           <p className="mt-1 text-sm text-granite">
-            Add your first entry above — sports teams, volunteering, school projects, anything.
+            Add your first entry above — previous roles, volunteering, courses, projects, anything.
           </p>
         </div>
       )}

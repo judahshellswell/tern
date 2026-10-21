@@ -29,7 +29,7 @@ export function Trust() {
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Trust &amp; safety</p>
           <h2 className="text-balance mt-3 font-serif text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">
-            Built to be trusted by parents, not just users.
+            Built to be trusted, not just used.
           </h2>
           <p className="mt-4 max-w-[38ch] text-lg text-granite">
             In a small community, reputations travel fast. Tern&rsquo;s safety
