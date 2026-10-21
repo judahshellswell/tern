@@ -5,6 +5,7 @@ import { Wordmark } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 import { NotificationBell } from "./notification-bell";
 import { useAuth } from "./auth/auth-provider";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export function SiteHeader() {
   const { user, loading } = useAuth();
@@ -40,6 +41,14 @@ export function SiteHeader() {
               className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
             >
               Dashboard
+            </Link>
+          ) : LAUNCH_GATE_ACTIVE ? (
+            // --- TEMPORARY pre-launch gate, remove this branch on launch day ---
+            <Link
+              href="/coming-soon"
+              className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
+            >
+              Coming soon
             </Link>
           ) : (
             <>

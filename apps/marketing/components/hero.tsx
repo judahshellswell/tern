@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "./auth/auth-provider";
+import { LAUNCH_GATE_ACTIVE, LAUNCH_DATE_LABEL } from "@/lib/launch-gate";
 
 // Fully theme-aware — no separate "always dark" surface. Light mode uses
 // the normal light palette with tide-teal as the accent; dark mode
@@ -38,6 +39,22 @@ export function Hero() {
               >
                 Dashboard
               </Link>
+            ) : LAUNCH_GATE_ACTIVE ? (
+              // --- TEMPORARY pre-launch gate, remove this branch on launch day ---
+              <>
+                <Link
+                  href="/coming-soon"
+                  className="rounded-full bg-tide px-7 py-4 text-[16px] font-extrabold text-paper transition-colors hover:bg-tide-bright"
+                >
+                  Launching {LAUNCH_DATE_LABEL} →
+                </Link>
+                <Link
+                  href="/jobs"
+                  className="text-sm font-semibold text-ink transition-colors hover:text-tide"
+                >
+                  Browse jobs
+                </Link>
+              </>
             ) : (
               <>
                 <Link

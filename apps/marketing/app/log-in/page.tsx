@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
 import { LogInForm } from "@/components/auth/log-in-form";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export const metadata: Metadata = {
   title: "Log in — Tern",
@@ -10,6 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default function LogInPage() {
+  // --- TEMPORARY pre-launch gate, remove this block on launch day ---
+  if (LAUNCH_GATE_ACTIVE) redirect("/coming-soon");
+  // --- end temporary block ---
+
   return (
     <>
       <SiteHeader />
