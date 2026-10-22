@@ -16,10 +16,11 @@ export function EmployerPitch() {
             <SectionHeading
               eyebrow="For employers"
               title="Hire for potential, not a name on a CV."
-              lede="Tern gives you rich, honest candidate profiles — skills, projects, video intros — from people who've already chosen to apply. Less filtering, more signal."
+              lede="Every job seeker completes a readiness course before they can apply — so you're seeing people who've already shown they're motivated to work, not just anyone with a CV. Less filtering, more signal."
             />
             <ul className="mt-8 space-y-3 text-[15px] text-ink">
               {[
+                "Every candidate completes a readiness course before applying — screened for attitude, not just skills",
                 "Post part-time, apprenticeship, internship, temporary and seasonal roles",
                 "Review applicants on a simple shortlist board — New, Reviewed, Shortlisted, Interview, Hired",
                 "Download CVs and message through structured, professional templates",

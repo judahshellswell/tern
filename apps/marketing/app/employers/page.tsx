@@ -8,7 +8,7 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "For employers — Tern",
   description:
-    "Post part-time, apprenticeship, internship, temporary and seasonal roles on Tern, and review verified early-career applicants — free while we build in Jersey.",
+    "Post part-time, apprenticeship, internship, temporary and seasonal roles on Tern, and review verified, readiness-screened applicants. Free 3-month trial for every new employer.",
 };
 
 const steps = [
@@ -17,12 +17,16 @@ const steps = [
     body: "Submit your registration details and a proof of business. A person reviews every application — not an algorithm — so you're talking to us, not a queue.",
   },
   {
+    title: "Candidates prove they're ready, before you ever see them",
+    body: "Every job seeker completes a readiness course — scenario questions on reliability, communication and handling mistakes — before they can apply to anything. Quality and attitude, screened upfront.",
+  },
+  {
     title: "Post a role in under two minutes",
     body: "Choose a type — part-time, apprenticeship, internship, temporary or seasonal — and the form adapts to it. Transparent pay is required, not optional: it's one of the clearest trust signals a listing can give.",
   },
   {
     title: "Review real applicants on a simple board",
-    body: "New, Reviewed, Shortlisted, Interview, Hired. Every card is a full Potential Snapshot — skills, portfolio, video intro, downloadable CV — from someone who chose to apply to you.",
+    body: "New, Reviewed, Shortlisted, Interview, Hired. Every card is a full Potential Snapshot — skills, portfolio, downloadable CV — from someone who already passed the readiness bar.",
   },
   {
     title: "Message through structured templates",
@@ -33,7 +37,11 @@ const steps = [
 const faqs = [
   {
     q: "What does it cost?",
-    a: "Free, for now. We're pre-launch and focused on getting the product and the trust model right in Jersey before we think about pricing.",
+    a: "Every new employer gets a free 3-month trial, full access, no card required. After that, pricing depends on how you hire — see the pricing section above for ongoing, seasonal and single-role options.",
+  },
+  {
+    q: "What's included in the readiness course?",
+    a: "Before anyone can apply to a job, they complete a scenario-based course on reliability, communication, and handling mistakes at work. Strong answers pass automatically; weaker ones are flagged for a human to review before that person can apply to anything. You're only ever seeing candidates who've already shown they're motivated to work, not just anyone with a CV.",
   },
   {
     q: "Can I search or browse candidates directly?",
@@ -94,6 +102,86 @@ export default function EmployersPage() {
                   </div>
                 ),
               )}
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="border-b border-border px-6 py-16 sm:py-20">
+          <div className="mx-auto max-w-6xl">
+            <SectionHeading
+              eyebrow="Pricing"
+              title="Simple pricing, no hidden fees."
+              lede="Pick whichever fits how you hire. Every new employer starts with a free 3-month trial, full access, no card required."
+            />
+
+            <div className="mt-6 inline-flex items-center gap-3 rounded-2xl bg-gorse-bg px-5 py-4">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="shrink-0 text-gorse">
+                <path
+                  d="M12 2 20 6v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <span className="text-[13px] font-bold text-gorse">
+                First 3 months free for every new employer — no commitment, cancel anytime.
+              </span>
+            </div>
+
+            <div className="mt-10 grid gap-6 lg:grid-cols-3">
+              <div className="rounded-2xl border border-border-strong bg-paper-raised p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
+                  Ongoing hiring
+                </p>
+                <p className="mt-3 font-serif text-3xl font-semibold">
+                  £195<span className="text-lg font-normal text-granite">/month</span>
+                </p>
+                <p className="mt-1 text-sm text-granite">
+                  Unlimited postings and applicants, every month.
+                </p>
+                <p className="mt-4 text-[15px] text-ink">
+                  Best for roles you&rsquo;re always hiring — till staff,
+                  shop floor, hospitality. Post as many roles as you need,
+                  whenever you need them.
+                </p>
+                <p className="mt-4 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-tide">
+                  £550 for 3 months &mdash; save £35
+                </p>
+              </div>
+
+              <div className="rounded-2xl border-2 border-tide bg-paper-raised p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
+                  Seasonal &amp; temporary
+                </p>
+                <p className="mt-3 font-serif text-3xl font-semibold">
+                  5%<span className="text-lg font-normal text-granite"> of placement pay</span>
+                </p>
+                <p className="mt-1 text-sm text-granite">
+                  Only pay when you actually hire someone.
+                </p>
+                <p className="mt-4 text-[15px] text-ink">
+                  Built for Christmas, summer, and other short-term
+                  surges — a fraction of what a traditional recruitment
+                  agency charges (typically 10&ndash;25%).
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-border-strong bg-paper-raised p-6">
+                <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">
+                  Single role
+                </p>
+                <p className="mt-3 font-serif text-3xl font-semibold">
+                  £95<span className="text-lg font-normal text-granite"> one-off</span>
+                </p>
+                <p className="mt-1 text-sm text-granite">
+                  One role, no subscription.
+                </p>
+                <p className="mt-4 text-[15px] text-ink">
+                  For a single vacancy when you don&rsquo;t need an
+                  ongoing plan — posted, reviewed, and filled on your
+                  terms.
+                </p>
+              </div>
             </div>
           </div>
         </section>
