@@ -1,12 +1,13 @@
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { getClientFirestore } from "./firebase-client";
-import { isFreeEmailDomain, type JobType, type Parish, type UserProfile } from "./types";
+import { isFreeEmailDomain, type Industry, type JobType, type Parish, type UserProfile } from "./types";
 
 export type JobSeekerSignupDetails = {
   displayName: string;
   dateOfBirth: string;
   location: Parish;
   preferredJobTypes: JobType[];
+  preferredIndustries: Industry[];
   idDocumentPath: string;
 };
 
@@ -14,6 +15,7 @@ export type EmployerSignupDetails = {
   businessName: string;
   registrationNumber: string;
   location: Parish;
+  industry: Industry;
   logoPath: string;
 };
 
@@ -32,6 +34,7 @@ export async function createJobSeekerProfile(
     dateOfBirth: details.dateOfBirth,
     location: details.location,
     preferredJobTypes: details.preferredJobTypes,
+    preferredIndustries: details.preferredIndustries,
     idDocumentPath: details.idDocumentPath,
     verificationStatus: "pending",
     emailVerified,
@@ -53,6 +56,7 @@ export async function createEmployerProfile(
     businessName: details.businessName,
     registrationNumber: details.registrationNumber,
     location: details.location,
+    industry: details.industry,
     logoPath: details.logoPath,
     isFreeEmailDomain: isFreeEmailDomain(email),
     verificationStatus: "pending",
@@ -77,12 +81,18 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
 // meant to avoid.
 export async function updateJobSeekerDetails(
   uid: string,
-  details: { displayName: string; location: Parish; preferredJobTypes: JobType[] },
+  details: {
+    displayName: string;
+    location: Parish;
+    preferredJobTypes: JobType[];
+    preferredIndustries: Industry[];
+  },
 ): Promise<void> {
   await updateDoc(doc(getClientFirestore(), "users", uid), {
     displayName: details.displayName,
     location: details.location,
     preferredJobTypes: details.preferredJobTypes,
+    preferredIndustries: details.preferredIndustries,
   });
 }
 
@@ -92,6 +102,7 @@ export async function updateEmployerDetails(
     businessName: string;
     registrationNumber: string;
     location: Parish;
+    industry: Industry;
     logoPath?: string;
   },
 ): Promise<void> {
@@ -99,6 +110,7 @@ export async function updateEmployerDetails(
     businessName: details.businessName,
     registrationNumber: details.registrationNumber,
     location: details.location,
+    industry: details.industry,
     ...(details.logoPath ? { logoPath: details.logoPath } : {}),
   });
 }

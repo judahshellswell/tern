@@ -34,6 +34,15 @@ service cloud.firestore {
       ];
     }
 
+    // Matches lib/types.ts INDUSTRIES exactly. Kept manually in sync,
+    // same convention as isValidParish() vs PARISHES.
+    function isValidIndustry(industry) {
+      return industry in [
+        "Retail", "Hospitality", "Future economy", "Construction & trades",
+        "Health & care", "Leisure & tourism", "Other"
+      ];
+    }
+
     // --- Users ---
     // A user can read and create their own profile. They can update their
     // own details while pending or rejected (edit-and-resubmit resets
@@ -54,10 +63,13 @@ service cloud.firestore {
             && request.resource.data.idDocumentPath is string
             && request.resource.data.idDocumentPath.size() > 0
             && (!("preferredJobTypes" in request.resource.data)
-              || request.resource.data.preferredJobTypes.size() <= 3)))
+              || request.resource.data.preferredJobTypes.size() <= 3)
+            && (!("preferredIndustries" in request.resource.data)
+              || request.resource.data.preferredIndustries.size() <= 3)))
         && (request.resource.data.role != "employer"
           || (request.resource.data.logoPath is string
-            && request.resource.data.logoPath.size() > 0));
+            && request.resource.data.logoPath.size() > 0
+            && isValidIndustry(request.resource.data.industry)));
       allow update: if (request.auth != null
           && request.auth.uid == uid
           && resource.data.verificationStatus != "banned"
@@ -71,10 +83,13 @@ service cloud.firestore {
               && request.resource.data.idDocumentPath is string
               && request.resource.data.idDocumentPath.size() > 0
               && (!("preferredJobTypes" in request.resource.data)
-                || request.resource.data.preferredJobTypes.size() <= 3)))
+                || request.resource.data.preferredJobTypes.size() <= 3)
+              && (!("preferredIndustries" in request.resource.data)
+                || request.resource.data.preferredIndustries.size() <= 3)))
           && (request.resource.data.role != "employer"
             || (request.resource.data.logoPath is string
-              && request.resource.data.logoPath.size() > 0)))
+              && request.resource.data.logoPath.size() > 0
+              && isValidIndustry(request.resource.data.industry))))
         || (request.auth != null
           && request.auth.uid == uid
           && resource.data.verificationStatus != "banned"
@@ -93,11 +108,14 @@ service cloud.firestore {
           && request.resource.data.verificationStatus == "approved"
           && isValidParish(request.resource.data.location)
           && ((resource.data.role == "job_seeker"
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "location", "preferredJobTypes"])
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["displayName", "location", "preferredJobTypes", "preferredIndustries"])
                 && (!("preferredJobTypes" in request.resource.data)
-                  || request.resource.data.preferredJobTypes.size() <= 3))
+                  || request.resource.data.preferredJobTypes.size() <= 3)
+                && (!("preferredIndustries" in request.resource.data)
+                  || request.resource.data.preferredIndustries.size() <= 3))
               || (resource.data.role == "employer"
-                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["businessName", "registrationNumber", "location", "logoPath"]))))
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["businessName", "registrationNumber", "location", "logoPath", "industry"])
+                && isValidIndustry(request.resource.data.industry))))
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(["verificationStatus", "rejectionReason"]));

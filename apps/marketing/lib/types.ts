@@ -21,6 +21,24 @@ export const PARISHES = [
 
 export type Parish = (typeof PARISHES)[number];
 
+// Matches the Chamber of Commerce's own sector committee categories
+// (Retail, Hospitality, Future Economy) plus the other broad sectors
+// Tern's roles tend to fall into — chosen deliberately to line up with
+// Chamber's own vocabulary, since Chamber introductions are a real
+// signup channel. Kept manually in sync with the isValidIndustry()
+// rules function (same convention as PARISHES vs isValidParish()).
+export const INDUSTRIES = [
+  "Retail",
+  "Hospitality",
+  "Future economy",
+  "Construction & trades",
+  "Health & care",
+  "Leisure & tourism",
+  "Other",
+] as const;
+
+export type Industry = (typeof INDUSTRIES)[number];
+
 export type JobSeekerProfile = {
   role: "job_seeker";
   uid: string;
@@ -32,6 +50,10 @@ export type JobSeekerProfile = {
   // editable afterward. Used only to boost matching jobs toward the top
   // of /jobs — never a hard filter, so an empty array is a valid state.
   preferredJobTypes?: JobType[];
+  // Up to 3 industries the seeker is interested in — same boost-only
+  // treatment as preferredJobTypes, matched against an employer's own
+  // `industry` field to surface mutual interest, never a hard filter.
+  preferredIndustries?: Industry[];
   idDocumentPath: string; // Storage path, e.g. "verification-ids/{uid}/id.jpg"
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected", "banned", or "suspended"
@@ -50,6 +72,10 @@ export type EmployerProfile = {
   businessName: string;
   registrationNumber: string;
   location: Parish;
+  // Single industry the business operates in — required at signup (unlike
+  // a job seeker's preferredIndustries, this is the anchor the match
+  // signal is built from, not an optional boost).
+  industry: Industry;
   logoPath: string; // Storage path, e.g. "employer-logos/{uid}/logo.jpg"
   isFreeEmailDomain: boolean; // signup email isn't on the business's own domain
   verificationStatus: VerificationStatus;

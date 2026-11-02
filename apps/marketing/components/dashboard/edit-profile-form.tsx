@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { JOB_TYPE_LABELS, type JobType, type UserProfile } from "@/lib/types";
+import { INDUSTRIES, JOB_TYPE_LABELS, type Industry, type JobType, type UserProfile } from "@/lib/types";
 import { updateJobSeekerDetails, updateEmployerDetails } from "@/lib/profile";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { ParishSelect } from "@/components/ui/parish-select";
+import { IndustrySelect } from "@/components/ui/industry-select";
 
 const MAX_PREFERRED_JOB_TYPES = 3;
+const MAX_PREFERRED_INDUSTRIES = 3;
 
 export function EditProfileForm({
   profile,
@@ -28,6 +30,12 @@ export function EditProfileForm({
   const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>(
     profile.role === "job_seeker" ? (profile.preferredJobTypes ?? []) : [],
   );
+  const [preferredIndustries, setPreferredIndustries] = useState<Industry[]>(
+    profile.role === "job_seeker" ? (profile.preferredIndustries ?? []) : [],
+  );
+  const [industry, setIndustry] = useState<Industry | "">(
+    profile.role === "employer" ? profile.industry : "",
+  );
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileError, setLogoFileError] = useState("");
   const [error, setError] = useState("");
@@ -43,19 +51,40 @@ export function EditProfileForm({
     );
   }
 
+  function togglePreferredIndustry(ind: Industry) {
+    setPreferredIndustries((prev) =>
+      prev.includes(ind)
+        ? prev.filter((i) => i !== ind)
+        : prev.length < MAX_PREFERRED_INDUSTRIES
+          ? [...prev, ind]
+          : prev,
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setIsPending(true);
     try {
       if (profile.role === "job_seeker") {
-        await updateJobSeekerDetails(profile.uid, { displayName, location, preferredJobTypes });
+        await updateJobSeekerDetails(profile.uid, {
+          displayName,
+          location,
+          preferredJobTypes,
+          preferredIndustries,
+        });
       } else {
+        if (!industry) {
+          setError("Please select an industry.");
+          setIsPending(false);
+          return;
+        }
         const logoPath = logoFile ? (await uploadEmployerLogo(profile.uid, logoFile)).path : undefined;
         await updateEmployerDetails(profile.uid, {
           businessName,
           registrationNumber,
           location,
+          industry,
           logoPath,
         });
       }
@@ -109,6 +138,34 @@ export function EditProfileForm({
               ))}
             </div>
           </div>
+        )}
+
+        {profile.role === "job_seeker" && (
+          <div>
+            <p className="mb-1.5 block text-xs font-medium text-granite">
+              Industries you&rsquo;re interested in (up to {MAX_PREFERRED_INDUSTRIES}, optional)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {INDUSTRIES.map((ind) => (
+                <button
+                  key={ind}
+                  type="button"
+                  onClick={() => togglePreferredIndustry(ind)}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                    preferredIndustries.includes(ind)
+                      ? "border-tide bg-tide text-paper"
+                      : "border-border-strong bg-paper-raised text-ink hover:border-tide"
+                  }`}
+                >
+                  {ind}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {profile.role === "employer" && (
+          <IndustrySelect id="edit-profile-industry" label="Industry" value={industry} onChange={setIndustry} />
         )}
 
         {profile.role === "employer" && (

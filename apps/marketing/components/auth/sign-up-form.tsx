@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import type { JobType, Parish, UserRole } from "@/lib/types";
-import { isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/lib/types";
+import type { Industry, JobType, Parish, UserRole } from "@/lib/types";
+import { INDUSTRIES, isUnderMinimumAge, JOB_TYPE_LABELS, MINIMUM_AGE } from "@/lib/types";
 import { signUpWithEmail, signInWithGoogle, authErrorMessage, sendVerificationEmail } from "@/lib/auth-actions";
 import { createJobSeekerProfile, createEmployerProfile, getProfile } from "@/lib/profile";
 import { notifyAdminOfSignup } from "@/app/actions";
@@ -12,8 +12,10 @@ import { getIdToken } from "@/lib/id-token";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
 import { ParishSelect } from "@/components/ui/parish-select";
+import { IndustrySelect } from "@/components/ui/industry-select";
 
 const MAX_PREFERRED_JOB_TYPES = 3;
+const MAX_PREFERRED_INDUSTRIES = 3;
 
 type Step = "role" | "account" | "details";
 
@@ -32,8 +34,10 @@ export function SignUpForm() {
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [location, setLocation] = useState<Parish | "">("");
   const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>([]);
+  const [preferredIndustries, setPreferredIndustries] = useState<Industry[]>([]);
   const [businessName, setBusinessName] = useState("");
   const [registrationNumber, setRegistrationNumber] = useState("");
+  const [industry, setIndustry] = useState<Industry | "">("");
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -52,6 +56,16 @@ export function SignUpForm() {
         ? prev.filter((t) => t !== type)
         : prev.length < MAX_PREFERRED_JOB_TYPES
           ? [...prev, type]
+          : prev,
+    );
+  }
+
+  function togglePreferredIndustry(ind: Industry) {
+    setPreferredIndustries((prev) =>
+      prev.includes(ind)
+        ? prev.filter((i) => i !== ind)
+        : prev.length < MAX_PREFERRED_INDUSTRIES
+          ? [...prev, ind]
           : prev,
     );
   }
@@ -110,6 +124,10 @@ export function SignUpForm() {
       setError("Please upload a logo to continue.");
       return;
     }
+    if (role === "employer" && !industry) {
+      setError("Please select an industry.");
+      return;
+    }
     if (!location) {
       setError("Please select a parish.");
       return;
@@ -127,12 +145,13 @@ export function SignUpForm() {
             dateOfBirth,
             location,
             preferredJobTypes,
+            preferredIndustries,
             idDocumentPath,
           },
           emailVerified,
         );
         void getIdToken().then(notifyAdminOfSignup);
-      } else if (logoFile) {
+      } else if (logoFile && industry) {
         const { path: logoPath } = await uploadEmployerLogo(uid, logoFile);
         await createEmployerProfile(
           uid,
@@ -141,6 +160,7 @@ export function SignUpForm() {
             businessName,
             registrationNumber,
             location,
+            industry,
             logoPath,
           },
           emailVerified,
@@ -303,6 +323,27 @@ export function SignUpForm() {
             </div>
           </div>
           <div>
+            <p className="mb-1.5 block text-xs font-medium text-granite">
+              Industries you&rsquo;re interested in (up to {MAX_PREFERRED_INDUSTRIES}, optional)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {INDUSTRIES.map((ind) => (
+                <button
+                  key={ind}
+                  type="button"
+                  onClick={() => togglePreferredIndustry(ind)}
+                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                    preferredIndustries.includes(ind)
+                      ? "border-tide bg-tide text-paper"
+                      : "border-border-strong bg-paper text-ink hover:border-tide"
+                  }`}
+                >
+                  {ind}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <label htmlFor="id-upload" className="mb-1.5 block text-xs font-medium text-granite">
               Photo ID
             </label>
@@ -350,6 +391,7 @@ export function SignUpForm() {
             placeholder="JFSC registration number"
           />
           <ParishSelect id="signup-location" label="Location" value={location} onChange={setLocation} />
+          <IndustrySelect id="signup-industry" label="Industry" value={industry} onChange={setIndustry} />
           <div>
             <label htmlFor="logo-upload" className="mb-1.5 block text-xs font-medium text-granite">
               Logo
@@ -399,7 +441,7 @@ export function SignUpForm() {
           isPending ||
           !location ||
           (role === "job_seeker" && (underMinimumAge || !idFile)) ||
-          (role === "employer" && !logoFile)
+          (role === "employer" && (!logoFile || !industry))
         }
         className="mt-5 w-full rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >

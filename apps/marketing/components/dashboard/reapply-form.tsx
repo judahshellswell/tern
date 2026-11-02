@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import {
+  INDUSTRIES,
   isUnderMinimumAge,
   JOB_TYPE_LABELS,
   MINIMUM_AGE,
+  type Industry,
   type JobType,
   type UserProfile,
 } from "@/lib/types";
@@ -15,8 +17,10 @@ import { notifyAdminOfSignup } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import { useAuth } from "@/components/auth/auth-provider";
 import { ParishSelect } from "@/components/ui/parish-select";
+import { IndustrySelect } from "@/components/ui/industry-select";
 
 const MAX_PREFERRED_JOB_TYPES = 3;
+const MAX_PREFERRED_INDUSTRIES = 3;
 
 export function ReapplyForm({
   profile,
@@ -42,6 +46,12 @@ export function ReapplyForm({
   const [preferredJobTypes, setPreferredJobTypes] = useState<JobType[]>(
     profile.role === "job_seeker" ? (profile.preferredJobTypes ?? []) : [],
   );
+  const [preferredIndustries, setPreferredIndustries] = useState<Industry[]>(
+    profile.role === "job_seeker" ? (profile.preferredIndustries ?? []) : [],
+  );
+  const [industry, setIndustry] = useState<Industry | "">(
+    profile.role === "employer" ? profile.industry : "",
+  );
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -61,6 +71,16 @@ export function ReapplyForm({
     );
   }
 
+  function togglePreferredIndustry(ind: Industry) {
+    setPreferredIndustries((prev) =>
+      prev.includes(ind)
+        ? prev.filter((i) => i !== ind)
+        : prev.length < MAX_PREFERRED_INDUSTRIES
+          ? [...prev, ind]
+          : prev,
+    );
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (profile.role === "job_seeker" && underMinimumAge) {
@@ -73,6 +93,10 @@ export function ReapplyForm({
     }
     if (profile.role === "employer" && !logoFile) {
       setError("Please upload a logo to continue.");
+      return;
+    }
+    if (profile.role === "employer" && !industry) {
+      setError("Please select an industry.");
       return;
     }
     setError("");
@@ -89,12 +113,13 @@ export function ReapplyForm({
             dateOfBirth,
             location,
             preferredJobTypes,
+            preferredIndustries,
             idDocumentPath,
           },
           emailVerified,
         );
         void getIdToken().then(notifyAdminOfSignup);
-      } else if (profile.role === "employer" && logoFile) {
+      } else if (profile.role === "employer" && logoFile && industry) {
         const { path: logoPath } = await uploadEmployerLogo(profile.uid, logoFile);
         await createEmployerProfile(
           profile.uid,
@@ -103,6 +128,7 @@ export function ReapplyForm({
             businessName,
             registrationNumber,
             location,
+            industry,
             logoPath,
           },
           emailVerified,
@@ -164,6 +190,27 @@ export function ReapplyForm({
               </div>
             </div>
             <div>
+              <p className="mb-1.5 block text-xs font-medium text-granite">
+                Industries you&rsquo;re interested in (up to {MAX_PREFERRED_INDUSTRIES}, optional)
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {INDUSTRIES.map((ind) => (
+                  <button
+                    key={ind}
+                    type="button"
+                    onClick={() => togglePreferredIndustry(ind)}
+                    className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors cursor-pointer ${
+                      preferredIndustries.includes(ind)
+                        ? "border-tide bg-tide text-paper"
+                        : "border-border-strong bg-paper-raised text-ink hover:border-tide"
+                    }`}
+                  >
+                    {ind}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
               <label
                 htmlFor="reapply-id-upload"
                 className="mb-1.5 block text-xs font-medium text-granite"
@@ -206,6 +253,7 @@ export function ReapplyForm({
               onChange={setRegistrationNumber}
             />
             <ParishSelect id="reapply-location" label="Location" value={location} onChange={setLocation} />
+            <IndustrySelect id="reapply-industry" label="Industry" value={industry} onChange={setIndustry} />
             <div>
               <label
                 htmlFor="reapply-logo-upload"
@@ -248,7 +296,7 @@ export function ReapplyForm({
         disabled={
           isPending ||
           (profile.role === "job_seeker" && (underMinimumAge || !idFile)) ||
-          (profile.role === "employer" && !logoFile)
+          (profile.role === "employer" && (!logoFile || !industry))
         }
         className="mt-4 rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
       >

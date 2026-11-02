@@ -44,6 +44,10 @@ const faqs = [
     a: "Before anyone can apply to a job, they complete a scenario-based course on reliability, communication, and handling mistakes at work, then a short 15-minute interview with us. Strong course answers pass automatically; weaker ones are flagged for a human to review. You're only ever seeing candidates who've already shown they're motivated to work and spoken to us directly, not just anyone with a CV.",
   },
   {
+    q: "Does Tern match candidates to my industry?",
+    a: "Yes — every business tells us its industry at sign-up, and job seekers can optionally tell us which industries they're interested in. It's a signal, not a filter: candidates interested in your sector are easier to spot, but anyone can still apply to any role.",
+  },
+  {
     q: "Can I search or browse candidates directly?",
     a: "No — by design. You only ever see people who've applied to your own vacancies. It's the clearest way we can promise candidates that Tern isn't a place to be found by strangers.",
   },

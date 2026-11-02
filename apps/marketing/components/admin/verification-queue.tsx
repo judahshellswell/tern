@@ -91,11 +91,15 @@ export function AdminVerificationQueue() {
               <>
                 <DetailRow label="Date of birth" value={profile.dateOfBirth} />
                 <DetailRow label="Location" value={profile.location} />
+                {profile.preferredIndustries && profile.preferredIndustries.length > 0 && (
+                  <DetailRow label="Industries" value={profile.preferredIndustries.join(", ")} />
+                )}
               </>
             ) : (
               <>
                 <DetailRow label="Registration no." value={profile.registrationNumber} />
                 <DetailRow label="Location" value={profile.location} />
+                <DetailRow label="Industry" value={profile.industry} />
               </>
             )}
           </dl>
