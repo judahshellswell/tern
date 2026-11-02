@@ -16,6 +16,12 @@ import {
   applyReadinessGateReview,
   type ReadinessRawAnswers,
 } from "@/lib/readiness-gate";
+import {
+  createInterviewSlots,
+  bookInterviewSlot,
+  markInterviewOutcome,
+  cancelInterviewBooking,
+} from "@/lib/interview-gate";
 import type {
   ApplicationStatus,
   Parish,
@@ -197,9 +203,9 @@ export async function submitReadinessGate(
       await writeNotification(
         uid,
         "readiness_gate_passed",
-        "You're ready to apply",
-        "Nice work — your answers were approved. You can apply to jobs now.",
-        "/jobs",
+        "One step left — book your interview",
+        "Nice work — your answers were approved. Book a short interview to finish up.",
+        "/dashboard/interview",
       );
     } else {
       await writeNotification(
@@ -251,9 +257,9 @@ export async function reviewReadinessGate(
       await writeNotification(
         uid,
         "readiness_gate_passed",
-        "You're ready to apply",
-        "An admin reviewed your answers and approved them — you can apply to jobs now.",
-        "/jobs",
+        "One step left — book your interview",
+        "An admin reviewed your answers and approved them. Book a short interview to finish up.",
+        "/dashboard/interview",
       );
     } else {
       await writeNotification(
@@ -266,6 +272,123 @@ export async function reviewReadinessGate(
     }
   } catch (err) {
     console.error("Failed to send readiness gate review notification:", err);
+  }
+
+  return result;
+}
+
+// --- Interview booking ---
+
+// Admin action: generates bookable 15-minute slots (30 minutes apart)
+// across a date + time window. windowStart/windowEnd are ISO
+// timestamps chosen by the admin's own browser (so they're already in
+// the admin's local time zone by the time they arrive here).
+export async function addInterviewAvailability(
+  idToken: string,
+  windowStartIso: string,
+  windowEndIso: string,
+) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  return createInterviewSlots(db, new Date(windowStartIso), new Date(windowEndIso));
+}
+
+// Job seeker action: books a specific open slot. Requires the seeker to
+// have passed their readiness gate first — booking an interview before
+// that makes no sense in the flow, and this keeps the server side of
+// the gate chain consistent with what the UI already only shows after
+// readiness passes.
+export async function bookInterview(idToken: string, slotId: string) {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+
+  const userSnap = await db.collection("users").doc(caller.uid).get();
+  const profile = userSnap.data();
+  if (!profile || profile.role !== "job_seeker") {
+    return { ok: false, error: "Only job seeker accounts can book an interview." } as const;
+  }
+  const readinessSnap = await db
+    .collection("users")
+    .doc(caller.uid)
+    .collection("readinessGate")
+    .doc("submission")
+    .get();
+  if (readinessSnap.data()?.outcome !== "passed") {
+    return { ok: false, error: "Complete your readiness check first." } as const;
+  }
+
+  const result = await bookInterviewSlot(db, caller.uid, profile.displayName ?? "", slotId);
+  if (!result.ok) return result;
+
+  try {
+    const adminUid = await getAdminUid();
+    if (adminUid) {
+      await writeNotification(
+        adminUid,
+        "interview_booked",
+        "New interview booked",
+        `${profile.displayName ?? caller.uid} booked ${new Date(result.booking.startTime).toLocaleString("en-GB")}`,
+        "/admin",
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send interview-booked admin notification:", err);
+  }
+
+  return result;
+}
+
+// Admin action: records the real outcome once the interview time has
+// passed. "completed" is the only outcome that unlocks applying.
+export async function setInterviewOutcome(
+  idToken: string,
+  uid: string,
+  outcome: "completed" | "no_show",
+) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  const result = await markInterviewOutcome(db, uid, outcome, admin.email ?? "");
+  if (!result.ok) return result;
+
+  try {
+    if (outcome === "completed") {
+      await writeNotification(
+        uid,
+        "interview_completed",
+        "Interview complete — you're ready to apply",
+        "Thanks for chatting with us — you can apply to jobs now.",
+        "/jobs",
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send interview outcome notification:", err);
+  }
+
+  return result;
+}
+
+// Admin action: frees a seeker's booked slot and clears their booking,
+// e.g. if they ask to reschedule. They'll see the slot picker again.
+export async function cancelInterview(idToken: string, uid: string) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  const result = await cancelInterviewBooking(db, uid);
+  if (!result.ok) return result;
+
+  try {
+    await writeNotification(
+      uid,
+      "interview_cancelled_by_admin",
+      "Your interview was cancelled",
+      "Your booked interview slot was cancelled — please pick a new time.",
+      "/dashboard/interview",
+    );
+  } catch (err) {
+    console.error("Failed to send interview-cancelled notification:", err);
   }
 
   return result;

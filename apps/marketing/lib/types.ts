@@ -258,7 +258,10 @@ export type NotificationKind =
   | "readiness_gate_passed"
   | "readiness_gate_flagged"
   | "readiness_gate_rejected"
-  | "admin_readiness_review_pending";
+  | "admin_readiness_review_pending"
+  | "interview_booked"
+  | "interview_completed"
+  | "interview_cancelled_by_admin";
 
 export type Notification = {
   id: string;
@@ -605,6 +608,60 @@ export type ReadinessGateSubmission = {
   // "none" delay, matching the original no-cooldown behavior.
   retryLockedUntil?: string | null;
   retryLockedPermanently?: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// --- Interview booking ---
+// The final gate before a job seeker can apply: a short 1:1 interview,
+// booked against admin-defined availability. Slots are generated
+// server-side from an admin-chosen date + time window (never placed by
+// hand), spaced INTERVIEW_SLOT_LENGTH_MINUTES on, repeating every
+// INTERVIEW_SLOT_SPACING_MINUTES — e.g. a slot at 11:15 makes the next
+// bookable slot 11:45, not 11:30, so a call that runs over never
+// collides with the next one.
+export const INTERVIEW_SLOT_LENGTH_MINUTES = 15;
+export const INTERVIEW_SLOT_SPACING_MINUTES = 30;
+
+export type InterviewSlotStatus = "open" | "booked" | "cancelled";
+
+// Lives at the top level (interviewSlots/{slotId}), not nested under the
+// admin or the seeker, since it's queried both ways: the admin lists
+// everything, a seeker lists only open+future slots to book one. A
+// unique Jitsi room is generated per slot at creation time (not at
+// booking time) so the link is stable and predictable before anyone's
+// claimed it.
+export type InterviewSlot = {
+  id: string;
+  startTime: string; // ISO timestamp
+  status: InterviewSlotStatus;
+  meetingUrl: string;
+  bookedByUid?: string;
+  bookedByName?: string;
+  bookedAt?: string;
+  createdAt: string;
+};
+
+export type InterviewBookingOutcome = "booked" | "completed" | "no_show";
+
+// Fixed-path doc per job seeker (users/{uid}/interview/booking), same
+// convention as readinessGate/submission — one predictable path so both
+// the apply-gate rule and the UI can read "has this person done their
+// interview" with a single get(). Written only by server actions
+// (bookInterviewSlot / markInterviewOutcome in app/actions.ts) via the
+// Admin SDK, same reasoning as the readiness gate: this is a real
+// decision (did they book? did they actually show up?), not something
+// the client should ever author directly.
+export type InterviewBooking = {
+  slotId: string;
+  startTime: string; // snapshot of the slot's time at booking
+  meetingUrl: string; // snapshot of the slot's room at booking
+  outcome: InterviewBookingOutcome;
+  // Set by the admin after the call actually happens — this, not the
+  // booking itself, is what the apply-gate checks. Booking a slot only
+  // reserves time; a no-show should not unlock applying.
+  markedBy?: string; // admin email
+  markedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };

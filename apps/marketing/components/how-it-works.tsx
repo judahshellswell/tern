@@ -4,8 +4,8 @@ const jobSeekerSteps = [
     body: "Skills, interests, qualifications, portfolio — the things that show who you are, not just where you've worked.",
   },
   {
-    title: "Get verified",
-    body: "A quick ID check — no stranger reaches you until this is done.",
+    title: "Get verified, then a short interview",
+    body: "A quick ID check, a readiness course, and a short 15-minute call — no stranger reaches you until this is done.",
   },
   {
     title: "Apply in one tap",

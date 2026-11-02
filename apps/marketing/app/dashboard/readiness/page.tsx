@@ -113,12 +113,14 @@ function ReadinessGate() {
     return (
       <div className="rounded-2xl border border-border-strong bg-paper-raised p-6 text-center">
         <p className="font-serif text-lg font-semibold text-tide">You&rsquo;re all set.</p>
-        <p className="mt-1 text-sm text-granite">You can apply to jobs now.</p>
+        <p className="mt-1 text-sm text-granite">
+          Last step — book a short interview before you can apply.
+        </p>
         <Link
-          href="/jobs"
+          href="/dashboard/interview"
           className="mt-4 inline-block rounded-full bg-tide px-5 py-2.5 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
         >
-          Browse jobs
+          Book your interview
         </Link>
       </div>
     );

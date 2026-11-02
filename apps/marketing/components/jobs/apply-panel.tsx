@@ -7,7 +7,14 @@ import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
-import type { HoursMode, JobType, Parish, PayMode, ReadinessGateOutcome } from "@/lib/types";
+import type {
+  HoursMode,
+  InterviewBookingOutcome,
+  JobType,
+  Parish,
+  PayMode,
+  ReadinessGateOutcome,
+} from "@/lib/types";
 
 export function ApplyPanel({
   jobId,
@@ -50,12 +57,24 @@ export function ApplyPanel({
   const [readinessOutcome, setReadinessOutcome] = useState<ReadinessGateOutcome | "loading" | "none">(
     "loading",
   );
+  const [interviewOutcome, setInterviewOutcome] = useState<
+    InterviewBookingOutcome | "loading" | "none"
+  >("loading");
 
   useEffect(() => {
     if (!user) return;
     const ref = doc(getClientFirestore(), "users", user.uid, "readinessGate", "submission");
     const unsubscribe = onSnapshot(ref, (snap) => {
       setReadinessOutcome(snap.exists() ? (snap.data().outcome as ReadinessGateOutcome) : "none");
+    });
+    return unsubscribe;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const ref = doc(getClientFirestore(), "users", user.uid, "interview", "booking");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      setInterviewOutcome(snap.exists() ? (snap.data().outcome as InterviewBookingOutcome) : "none");
     });
     return unsubscribe;
   }, [user]);
@@ -125,6 +144,28 @@ export function ApplyPanel({
             Go to readiness check
           </Link>
         )}
+      </div>
+    );
+  }
+
+  if (interviewOutcome === "loading") {
+    return <p className="text-granite">Loading…</p>;
+  }
+
+  if (interviewOutcome !== "completed") {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-gorse-bg p-6">
+        <p className="font-semibold text-gorse">
+          {interviewOutcome === "booked" ? "Interview booked" : "Book your interview"}
+        </p>
+        <p className="mt-1 text-sm text-granite">
+          {interviewOutcome === "booked"
+            ? "You're all set — once we've had the call you'll be able to apply."
+            : "A short interview with us before you can apply — book a time that works for you."}
+        </p>
+        <Link href="/dashboard/interview" className="mt-3 inline-block font-medium text-tide underline">
+          {interviewOutcome === "booked" ? "View your booking" : "Book an interview"}
+        </Link>
       </div>
     );
   }

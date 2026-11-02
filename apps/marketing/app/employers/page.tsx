@@ -18,7 +18,7 @@ const steps = [
   },
   {
     title: "Candidates prove they're ready, before you ever see them",
-    body: "Every job seeker completes a readiness course — scenario questions on reliability, communication and handling mistakes — before they can apply to anything. Quality and attitude, screened upfront.",
+    body: "Every job seeker completes a readiness course — scenario questions on reliability, communication and handling mistakes — plus a short interview with us, before they can apply to anything. Quality and attitude, screened upfront.",
   },
   {
     title: "Post a role in under two minutes",
@@ -41,7 +41,7 @@ const faqs = [
   },
   {
     q: "What's included in the readiness course?",
-    a: "Before anyone can apply to a job, they complete a scenario-based course on reliability, communication, and handling mistakes at work. Strong answers pass automatically; weaker ones are flagged for a human to review before that person can apply to anything. You're only ever seeing candidates who've already shown they're motivated to work, not just anyone with a CV.",
+    a: "Before anyone can apply to a job, they complete a scenario-based course on reliability, communication, and handling mistakes at work, then a short 15-minute interview with us. Strong course answers pass automatically; weaker ones are flagged for a human to review. You're only ever seeing candidates who've already shown they're motivated to work and spoken to us directly, not just anyone with a CV.",
   },
   {
     q: "Can I search or browse candidates directly?",

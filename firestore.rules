@@ -202,6 +202,42 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(uid)/readinessGate/submission).data.outcome == "passed";
     }
 
+    function hasCompletedInterview(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)/interview/booking)
+        && get(/databases/$(database)/documents/users/$(uid)/interview/booking).data.outcome == "completed";
+    }
+
+    // --- Interview slots ---
+    // Bookable times live at the top level (not nested under a user)
+    // since a job seeker needs to list every open, future slot across
+    // all admin-created availability. All writes go through the
+    // addInterviewAvailability/bookInterview/setInterviewOutcome/
+    // cancelInterview server actions (app/actions.ts) via the Admin
+    // SDK — booking in particular runs inside a Firestore transaction to
+    // prevent two people winning the same slot, which a client-side
+    // write could never safely guarantee. This block is a defensive
+    // boundary, same as the readinessGate block above.
+    match /interviewSlots/{slotId} {
+      allow read: if request.auth != null;
+      allow list: if request.auth != null;
+      allow create, update, delete: if false;
+    }
+
+    // --- Interview booking ---
+    // Single fixed-path doc per job seeker, same convention as
+    // readinessGate/submission — server-action-only, defensive boundary.
+    match /users/{uid}/interview/booking {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Collection-group read for the admin's interview queue (listing
+    // every booking across all users) — same reasoning as the
+    // readinessGate collection-group block above.
+    match /{path=**}/interview/{docId} {
+      allow list: if isAdmin();
+    }
+
     // --- Jobs ---
     // Anyone can read published jobs (public browse). Only the owning,
     // approved employer can create or edit their own jobs. Update is
@@ -234,7 +270,8 @@ service cloud.firestore {
 
     // --- Applications ---
     // An approved job seeker who has passed their readiness gate
-    // (hasPassedReadinessGate — see the readinessGate block above) can
+    // (hasPassedReadinessGate) and completed their booked interview
+    // (hasCompletedInterview — see the interview blocks above) can
     // create an application for themself. The
     // applicant can always read their own; the employer can read it only
     // if the applicant isn't currently banned or suspended. applicantBanned
@@ -258,6 +295,7 @@ service cloud.firestore {
         && request.auth.uid == request.resource.data.applicantId
         && isApprovedJobSeeker(request.auth.uid)
         && hasPassedReadinessGate(request.auth.uid)
+        && hasCompletedInterview(request.auth.uid)
         && request.resource.data.applicantBanned == false;
       allow update: if request.auth != null
         && ((request.auth.uid == resource.data.employerId

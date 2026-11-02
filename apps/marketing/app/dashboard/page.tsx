@@ -189,6 +189,17 @@ export default function DashboardPage() {
                     </p>
                   </Link>
                 )}
+                {profile.verificationStatus === "approved" && (
+                  <Link
+                    href="/dashboard/interview"
+                    className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                  >
+                    <p className="font-serif text-lg font-semibold">Book your interview</p>
+                    <p className="mt-1 text-sm text-granite">
+                      A short call — the last step before you can apply.
+                    </p>
+                  </Link>
+                )}
                 <Link
                   href="/jobs"
                   className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
