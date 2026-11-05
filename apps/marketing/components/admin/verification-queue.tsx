@@ -7,6 +7,7 @@ import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
 import { notifyRejection, banUserAccount } from "@/app/actions";
+import { deleteReviewedIdDocument } from "@/app/account-actions";
 import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 
@@ -27,20 +28,33 @@ export function AdminVerificationQueue() {
     return unsubscribe;
   }, []);
 
+  // ID documents are only kept until a decision is made — every outcome
+  // (approve, reject, ban) deletes the uploaded file straight after.
+  async function deleteIdAfterDecision(uid: string) {
+    const result = await deleteReviewedIdDocument(await getIdToken(), uid).catch(() => null);
+    if (!result?.ok) {
+      console.error(`Failed to delete ID document for ${uid}`, result);
+      window.alert("Decision saved, but the ID document couldn't be deleted. Please retry or delete it in the Firebase console.");
+    }
+  }
+
   async function approve(uid: string) {
     const userRef = doc(getClientFirestore(), "users", uid);
     await updateDoc(userRef, { verificationStatus: "approved" });
+    await deleteIdAfterDecision(uid);
   }
 
   async function reject(profile: UserProfile, reason: string) {
     const userRef = doc(getClientFirestore(), "users", profile.uid);
     await updateDoc(userRef, { verificationStatus: "rejected", rejectionReason: reason });
     void getIdToken().then((token) => notifyRejection(token, profile.uid, reason));
+    await deleteIdAfterDecision(profile.uid);
     setActiveAction(null);
   }
 
   async function ban(profile: UserProfile, reason: string) {
     await banUserAccount(await getIdToken(), profile.uid, reason);
+    await deleteIdAfterDecision(profile.uid);
     setActiveAction(null);
   }
 

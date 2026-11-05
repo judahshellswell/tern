@@ -54,6 +54,20 @@ service firebase.storage {
       allow delete: if false;
     }
 
+    // Job seeker CVs (optional). One file per user at a fixed path —
+    // uploading again replaces it. The owner can read, replace and delete
+    // their own; the admin can read. Employers never read this directly:
+    // they get a short-lived signed link from a server action that first
+    // checks the job seeker actually applied to them.
+    match /cvs/{uid}/{fileName} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 5 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|application/msword|application/vnd[.]openxmlformats-officedocument[.]wordprocessingml[.]document');
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
     // Default-deny everything else.
     match /{allPaths=**} {
       allow read, write: if false;

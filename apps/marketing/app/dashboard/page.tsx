@@ -8,6 +8,7 @@ import { logOut } from "@/lib/auth-actions";
 import { useRouter } from "next/navigation";
 import { ReapplyForm } from "@/components/dashboard/reapply-form";
 import { EditProfileForm } from "@/components/dashboard/edit-profile-form";
+import { DeleteAccountSection } from "@/components/dashboard/delete-account";
 import { APPLICATION_STATUS_LABELS, type Application, type EmployerProfile, type UserProfile } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where } from "firebase/firestore";
@@ -272,6 +273,8 @@ export default function DashboardPage() {
           >
             Log out
           </button>
+
+          <DeleteAccountSection role={profile.role} />
         </div>
       </main>
       <SiteFooter />

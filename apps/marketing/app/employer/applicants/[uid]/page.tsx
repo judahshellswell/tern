@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getApplicantProfileForEmployer, type ApplicantProfileForEmployer } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
+import { getApplicantCvUrl } from "@/app/account-actions";
 import { ReportButton } from "@/components/reports/report-button";
 
 export default function ApplicantProfilePage({
@@ -89,6 +90,8 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
       </h1>
       <p className="mt-1 text-granite">{result.location}</p>
 
+      <ApplicantCv applicantId={applicantId} />
+
       <div className="mt-8">
         <p className="mb-3 font-mono text-xs uppercase tracking-[0.1em] text-granite-soft">
           Portfolio
@@ -122,5 +125,45 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
         />
       </div>
     </>
+  );
+}
+
+function ApplicantCv({ applicantId }: { applicantId: string }) {
+  const [state, setState] = useState<"idle" | "loading" | "none" | "error">("idle");
+
+  async function download() {
+    setState("loading");
+    try {
+      const result = await getApplicantCvUrl(await getIdToken(), applicantId);
+      if (!result) {
+        setState("none");
+        return;
+      }
+      window.location.href = result.url;
+      setState("idle");
+    } catch {
+      setState("error");
+    }
+  }
+
+  return (
+    <div className="mt-4">
+      <button
+        type="button"
+        onClick={download}
+        disabled={state === "loading"}
+        className="rounded-full border border-border-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-tide disabled:opacity-60 cursor-pointer"
+      >
+        {state === "loading" ? "Preparing…" : "Download CV"}
+      </button>
+      {state === "none" && (
+        <p className="mt-2 text-sm text-granite">This applicant hasn&rsquo;t added a CV.</p>
+      )}
+      {state === "error" && (
+        <p role="alert" className="mt-2 text-sm text-gorse">
+          Couldn&rsquo;t get the CV. Please try again.
+        </p>
+      )}
+    </div>
   );
 }

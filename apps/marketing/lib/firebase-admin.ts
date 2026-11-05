@@ -50,6 +50,18 @@ export async function getAdminAuth(): Promise<Auth> {
   return auth;
 }
 
+// Cloud Storage bucket via the Admin SDK — bypasses storage.rules, so only
+// call this from server code that has already checked the caller's rights.
+// Lazy-imported for the same bundling reason as firebase-admin/auth above.
+export async function getAdminStorageBucket() {
+  const bucketName = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  if (!bucketName) {
+    throw new Error("Missing NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET env var.");
+  }
+  const { getStorage } = await import("firebase-admin/storage");
+  return getStorage(getAdminApp()).bucket(bucketName);
+}
+
 let cachedAdminUid: string | null = null;
 
 // The admin's Firebase uid, used to write in-app notifications (stored

@@ -11,6 +11,7 @@ import { notifyAdminOfSignup } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import { uploadIdDocument, validateIdDocument } from "@/lib/id-upload";
 import { uploadEmployerLogo, validateLogo } from "@/lib/logo-upload";
+import { CV_ACCEPT, uploadCv, validateCv } from "@/lib/cv-upload";
 import { ParishSelect } from "@/components/ui/parish-select";
 import { IndustrySelect } from "@/components/ui/industry-select";
 
@@ -40,6 +41,8 @@ export function SignUpForm() {
   const [industry, setIndustry] = useState<Industry | "">("");
   const [idFile, setIdFile] = useState<File | null>(null);
   const [idFileError, setIdFileError] = useState("");
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvFileError, setCvFileError] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoFileError, setLogoFileError] = useState("");
 
@@ -150,6 +153,11 @@ export function SignUpForm() {
           },
           emailVerified,
         );
+        // Optional — a failed CV upload never blocks account creation;
+        // it can be added again from the portfolio page.
+        if (cvFile) {
+          await uploadCv(uid, cvFile).catch((err) => console.error("CV upload failed:", err));
+        }
         void getIdToken().then(notifyAdminOfSignup);
       } else if (logoFile && industry) {
         const { path: logoPath } = await uploadEmployerLogo(uid, logoFile);
@@ -372,6 +380,38 @@ export function SignUpForm() {
             {idFileError && (
               <p role="alert" className="mt-1.5 text-xs text-gorse">
                 {idFileError}
+              </p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="cv-upload" className="mb-1.5 block text-xs font-medium text-granite">
+              CV (optional)
+            </label>
+            <input
+              id="cv-upload"
+              type="file"
+              accept={CV_ACCEPT}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (file) {
+                  const validationError = validateCv(file);
+                  setCvFileError(validationError ?? "");
+                  setCvFile(validationError ? null : file);
+                } else {
+                  setCvFile(null);
+                  setCvFileError("");
+                }
+              }}
+              className="block w-full text-sm text-ink file:mr-3 file:rounded-full file:border file:border-border-strong file:bg-paper file:px-4 file:py-2 file:text-sm file:font-medium file:text-ink hover:file:border-tide file:cursor-pointer"
+            />
+            <p className="mt-1.5 text-xs text-granite-soft">
+              PDF or Word, up to 5MB. Only employers you apply to can
+              download it. You can add, replace or remove it later from
+              your portfolio.
+            </p>
+            {cvFileError && (
+              <p role="alert" className="mt-1.5 text-xs text-gorse">
+                {cvFileError}
               </p>
             )}
           </div>

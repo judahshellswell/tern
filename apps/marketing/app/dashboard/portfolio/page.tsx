@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
 import { addPortfolioEntry, deletePortfolioEntry } from "@/lib/portfolio";
+import { CV_ACCEPT, deleteCv, getCv, uploadCv, validateCv, type CvInfo } from "@/lib/cv-upload";
 import type { PortfolioEntry } from "@/lib/types";
 
 export default function PortfolioPage() {
@@ -73,6 +74,8 @@ function Portfolio() {
 
   return (
     <div className="flex flex-col gap-6">
+      <CvSection uid={user.uid} />
+
       <AddEntryForm uid={user.uid} />
 
       {entries === null && <p className="text-granite">Loading entries…</p>}
@@ -185,5 +188,112 @@ function AddEntryForm({ uid }: { uid: string }) {
         )}
       </div>
     </form>
+  );
+}
+
+function CvSection({ uid }: { uid: string }) {
+  const [cv, setCv] = useState<CvInfo | null | undefined>(undefined);
+  const [error, setError] = useState("");
+  const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getCv(uid)
+      .then((info) => {
+        if (!cancelled) setCv(info);
+      })
+      .catch(() => {
+        if (!cancelled) setCv(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [uid]);
+
+  async function handleFile(file: File) {
+    const validationError = validateCv(file);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError("");
+    setIsPending(true);
+    try {
+      await uploadCv(uid, file);
+      setCv(await getCv(uid));
+    } catch {
+      setError("Couldn't upload your CV. Please try again.");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  async function handleRemove() {
+    setError("");
+    setIsPending(true);
+    try {
+      await deleteCv(uid);
+      setCv(null);
+    } catch {
+      setError("Couldn't remove your CV. Please try again.");
+    } finally {
+      setIsPending(false);
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-border-strong bg-paper-raised p-6 sm:p-8">
+      <p className="font-serif text-lg font-semibold">Your CV</p>
+      <p className="mt-1 text-sm text-granite">
+        Optional. PDF or Word, up to 5MB. Only employers you apply to can
+        download it, and you can remove it at any time.
+      </p>
+
+      {cv === undefined && <p className="mt-4 text-sm text-granite">Loading…</p>}
+
+      {cv && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border-strong bg-paper px-4 py-3">
+          <a
+            href={cv.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="min-w-0 break-words text-sm font-medium text-tide underline hover:text-tide-bright"
+          >
+            {cv.name}
+          </a>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={isPending}
+            className="text-sm text-granite-soft underline hover:text-gorse disabled:opacity-60 cursor-pointer"
+          >
+            Remove
+          </button>
+        </div>
+      )}
+
+      {cv !== undefined && (
+        <label className="mt-4 inline-block cursor-pointer rounded-full border border-border-strong bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-tide">
+          {isPending ? "Saving…" : cv ? "Replace CV" : "Upload CV"}
+          <input
+            type="file"
+            accept={CV_ACCEPT}
+            disabled={isPending}
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = "";
+              if (file) void handleFile(file);
+            }}
+          />
+        </label>
+      )}
+
+      {error && (
+        <p role="alert" className="mt-3 text-sm text-gorse">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
