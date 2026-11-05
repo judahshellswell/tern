@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export const metadata: Metadata = {
   title: "Terms of service — Tern",
@@ -73,16 +74,18 @@ export default function TermsPage() {
               </p>
             </div>
 
-            <div>
-              <h2 className="font-serif text-xl font-semibold">Contact</h2>
-              <p className="mt-3 text-granite">
-                Questions about these terms can be sent to{" "}
-                <a href="mailto:hello@tern.je" className="text-tide underline hover:text-tide-bright">
-                  hello@tern.je
-                </a>
-                .
-              </p>
-            </div>
+            {!LAUNCH_GATE_ACTIVE && (
+              <div>
+                <h2 className="font-serif text-xl font-semibold">Contact</h2>
+                <p className="mt-3 text-granite">
+                  Questions about these terms can be sent to{" "}
+                  <a href="mailto:hello@tern.je" className="text-tide underline hover:text-tide-bright">
+                    hello@tern.je
+                  </a>
+                  .
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </main>

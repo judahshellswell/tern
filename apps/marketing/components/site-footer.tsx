@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Wordmark } from "./logo";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 const columns = [
   {
@@ -15,7 +16,8 @@ const columns = [
     links: [
       { href: "/about", label: "About" },
       { href: "/faq", label: "FAQ" },
-      { href: "/contact", label: "Contact" },
+      // Hidden pre-launch: no contact channel while no data is collected.
+      ...(LAUNCH_GATE_ACTIVE ? [] : [{ href: "/contact", label: "Contact" }]),
     ],
   },
   {

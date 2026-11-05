@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminFirestore } from "@/lib/firebase-admin";
 import { sendClosingSoonReminder } from "@/lib/closing-reminder-notification";
 import { writeNotification } from "@/lib/notifications";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 const REMINDER_DAYS_BEFORE = 3;
 
@@ -16,6 +17,11 @@ export async function GET(request: Request) {
   const authHeader = request.headers.get("authorization");
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Pre-launch: no emails or notifications go out to anyone.
+  if (LAUNCH_GATE_ACTIVE) {
+    return NextResponse.json({ sent: 0, skipped: 0, gated: true });
   }
 
   const targetDate = new Date();

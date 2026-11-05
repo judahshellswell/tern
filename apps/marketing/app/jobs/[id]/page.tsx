@@ -9,6 +9,7 @@ import { ApplyPanel } from "@/components/jobs/apply-panel";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
 import { ReportButton } from "@/components/reports/report-button";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
+import { LAUNCH_DATE_LABEL, LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 type Params = { id: string };
 
@@ -78,13 +79,15 @@ export default async function JobDetailPage({
             <p className="text-lg text-granite">{job.employerName}</p>
           </div>
 
-          <div className="mt-2">
-            <ReportButton
-              reporterRole="job_seeker"
-              reportedId={job.employerId}
-              reportedRole="employer"
-            />
-          </div>
+          {!LAUNCH_GATE_ACTIVE && (
+            <div className="mt-2">
+              <ReportButton
+                reporterRole="job_seeker"
+                reportedId={job.employerId}
+                reportedRole="employer"
+              />
+            </div>
+          )}
 
           <div className="mt-6 flex flex-wrap gap-x-8 gap-y-2 border-y border-border py-4 font-mono text-sm text-ink">
             <span>{job.location}</span>
@@ -110,6 +113,17 @@ export default async function JobDetailPage({
             </div>
           )}
 
+          {LAUNCH_GATE_ACTIVE ? (
+            <div className="mt-10 rounded-2xl border border-border-strong bg-paper-raised p-6">
+              <p className="font-serif text-lg font-semibold">
+                Applications open {LAUNCH_DATE_LABEL}
+              </p>
+              <p className="mt-2 text-[15px] text-granite">
+                Tern isn&rsquo;t accepting applications or collecting any
+                personal details until launch.
+              </p>
+            </div>
+          ) : (
           <div className="mt-10">
             <ApplyPanel
               jobId={job.id}
@@ -129,6 +143,7 @@ export default async function JobDetailPage({
               skills={job.skills}
             />
           </div>
+          )}
         </div>
       </main>
       <SiteFooter />
