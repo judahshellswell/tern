@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
@@ -8,18 +8,31 @@ import { banUserAccount, dismissReport, markReportActioned } from "@/app/actions
 import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
 import type { Report } from "@/lib/types";
+import { useRetryingSnapshot } from "@/lib/use-retrying-snapshot";
 
 export function ReportsQueue() {
   const [reports, setReports] = useState<Report[] | null>(null);
+  const [error, setError] = useState("");
   const [banningId, setBanningId] = useState<string | null>(null);
 
-  useEffect(() => {
-    const q = query(collection(getClientFirestore(), "reports"), where("status", "==", "open"));
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setReports(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Report));
-    });
-    return unsubscribe;
-  }, []);
+  useRetryingSnapshot(
+    (onSuccess, onError) => {
+      const q = query(collection(getClientFirestore(), "reports"), where("status", "==", "open"));
+      return onSnapshot(
+        q,
+        (snap) => {
+          setError("");
+          setReports(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Report));
+          onSuccess();
+        },
+        (err) => {
+          setError("Couldn't load reports — retrying…");
+          onError(err.message);
+        },
+      );
+    },
+    [],
+  );
 
   async function dismiss(report: Report) {
     await dismissReport(await getIdToken(), report.id);
@@ -30,6 +43,10 @@ export function ReportsQueue() {
     await banUserAccount(token, report.reportedId, reason);
     await markReportActioned(token, report.id);
     setBanningId(null);
+  }
+
+  if (error) {
+    return <p className="text-gorse">{error}</p>;
   }
 
   if (reports === null) {

@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -32,6 +33,7 @@ export default function ApplicantProfilePage({
 
 function ApplicantProfile({ applicantId }: { applicantId: string }) {
   const { user, profile, loading } = useAuth();
+  const router = useRouter();
   const [result, setResult] = useState<ApplicantProfileForEmployer | null | undefined>(undefined);
 
   useEffect(() => {
@@ -78,12 +80,35 @@ function ApplicantProfile({ applicantId }: { applicantId: string }) {
     return (
       <div className="rounded-2xl border border-border-strong bg-paper-raised p-6">
         <p className="text-granite">That profile couldn&rsquo;t be found.</p>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="mt-3 text-sm font-medium text-tide underline hover:text-tide-bright cursor-pointer"
+        >
+          Back to applicants
+        </button>
       </div>
     );
   }
 
   return (
     <>
+      <button
+        type="button"
+        onClick={() => router.back()}
+        className="mb-6 flex items-center gap-1.5 text-sm font-medium text-granite hover:text-tide cursor-pointer"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M19 12H5m0 0 7 7m-7-7 7-7"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        Back to applicants
+      </button>
       <p className="font-mono text-xs uppercase tracking-[0.1em] text-tide">Applicant</p>
       <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight">
         {result.displayName}

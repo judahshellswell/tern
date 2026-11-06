@@ -3,7 +3,7 @@
 import { FieldValue, type Query } from "firebase-admin/firestore";
 import { getAdminAuth, getAdminFirestore, getAdminStorageBucket } from "@/lib/firebase-admin";
 import { requireAdmin, requireUser } from "@/lib/server-auth";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminEmail, isDemoEmail } from "@/lib/admin";
 import { cvStoragePath } from "@/lib/cv-path";
 
 // Every export here is a publicly callable endpoint — each one checks the
@@ -89,6 +89,9 @@ export async function deleteMyAccount(
   if (!caller) return { ok: false, error: "Please log in again and retry." };
   if (isAdminEmail(caller.email)) {
     return { ok: false, error: "The admin account can't be deleted from here." };
+  }
+  if (isDemoEmail(caller.email)) {
+    return { ok: false, error: "This is a shared demo account and can't be deleted." };
   }
 
   const uid = caller.uid;

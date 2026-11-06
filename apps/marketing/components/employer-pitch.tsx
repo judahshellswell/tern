@@ -22,8 +22,8 @@ export function EmployerPitch() {
               {[
                 "Every candidate completes a readiness course and a short interview with us before applying — screened for attitude, not just skills",
                 "Post part-time, apprenticeship, internship, temporary and seasonal roles",
-                "Review applicants on a simple shortlist board — New, Reviewed, Shortlisted, Interview, Hired",
-                "Download CVs and message through structured, professional templates",
+                "Review applicants on a simple shortlist board — New, Reviewed, Shortlisted, Rejected, Hired",
+                "Download CVs and message candidates directly once they apply — block or report any time",
                 "Every applicant already verified, so you're never guessing",
               ].map((line) => (
                 <li key={line} className="flex gap-3">

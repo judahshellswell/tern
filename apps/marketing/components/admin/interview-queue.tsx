@@ -6,6 +6,7 @@ import { getClientFirestore } from "@/lib/firebase-client";
 import { setInterviewOutcome, cancelInterview } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import type { InterviewBooking } from "@/lib/types";
+import { useRetryingSnapshot } from "@/lib/use-retrying-snapshot";
 
 type QueuedBooking = InterviewBooking & { uid: string };
 
@@ -20,25 +21,28 @@ export function InterviewQueue() {
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const q = query(collectionGroup(getClientFirestore(), "interview"), where("outcome", "==", "booked"));
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        setError("");
-        setBookings(
-          snap.docs
-            .map((d) => ({ ...(d.data() as InterviewBooking), uid: d.ref.parent.parent!.id }))
-            .sort((a, b) => a.startTime.localeCompare(b.startTime)),
-        );
-      },
-      (err) => {
-        console.error("Interview queue listener failed:", err);
-        setError("Couldn't load booked interviews. Please refresh the page.");
-      },
-    );
-    return unsubscribe;
-  }, []);
+  useRetryingSnapshot(
+    (onSuccess, onError) => {
+      const q = query(collectionGroup(getClientFirestore(), "interview"), where("outcome", "==", "booked"));
+      return onSnapshot(
+        q,
+        (snap) => {
+          setError("");
+          setBookings(
+            snap.docs
+              .map((d) => ({ ...(d.data() as InterviewBooking), uid: d.ref.parent.parent!.id }))
+              .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+          );
+          onSuccess();
+        },
+        (err) => {
+          setError("Couldn't load booked interviews — retrying…");
+          onError(err.message);
+        },
+      );
+    },
+    [],
+  );
 
   async function markOutcome(uid: string, outcome: "completed" | "no_show") {
     setPendingUid(uid);

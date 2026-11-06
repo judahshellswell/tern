@@ -16,11 +16,11 @@ const groups: { heading: string; items: { q: string; a: string }[] }[] = [
     items: [
       {
         q: "Is this safe for my 16 or 17 year old?",
-        a: "Every job seeker is identity-verified before they can apply to anything. There's no open messaging anywhere on the platform, and employers can only ever see people who've applied to their own vacancies — never a searchable list of candidates.",
+        a: "Every job seeker is identity-verified, completes a readiness course, and has a short interview with us before they can apply to anything. Employers can only ever see — and only ever message — people who've applied to their own vacancies, never a searchable list of candidates. Either side can block or report the other at any time, and a report pauses that conversation immediately until we've reviewed it by hand.",
       },
       {
         q: "Can employers message candidates directly?",
-        a: "Only through structured templates — interview invites, requests for more information, status updates — with typed fields like date pickers, not open text boxes. There's no way for anyone to send an arbitrary free-text message on Tern.",
+        a: "Yes, but only once someone has actually applied to their job — both sides are already identity-verified by that point, so it isn't open to strangers. Messages are automatically screened for language with no relevance to recruitment, either side can block the other, and reporting a conversation freezes it until our team has reviewed it.",
       },
       {
         q: "Can an employer browse or search candidate profiles?",

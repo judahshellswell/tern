@@ -14,10 +14,12 @@ export function ReportButton({
   reporterRole,
   reportedId,
   reportedRole,
+  conversationId,
 }: {
   reporterRole: UserRole;
   reportedId: string;
   reportedRole: UserRole;
+  conversationId?: string;
 }) {
   const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
@@ -60,6 +62,7 @@ export function ReportButton({
         reportedId,
         reason,
         evidenceImagePaths,
+        ...(conversationId ? { conversationId } : {}),
       });
       if (!result.ok) {
         setSubmitError(result.error);

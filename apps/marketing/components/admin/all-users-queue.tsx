@@ -1,29 +1,42 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
-import type { UserProfile } from "@/lib/types";
-import { banUserAccount, unsuspendUserAccount } from "@/app/actions";
+import { PRICING_PLANS, PRICING_PLAN_LABELS, type PricingPlan, type UserProfile } from "@/lib/types";
+import { banUserAccount, unsuspendUserAccount, setEmployerPricingPlan } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
+import { useRetryingSnapshot } from "@/lib/use-retrying-snapshot";
 
 export function AllUsersQueue() {
   const [users, setUsers] = useState<UserProfile[] | null>(null);
+  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [banningUid, setBanningUid] = useState<string | null>(null);
   const [unsuspendingUid, setUnsuspendingUid] = useState<string | null>(null);
 
-  useEffect(() => {
-    const q = query(
-      collection(getClientFirestore(), "users"),
-      where("verificationStatus", "in", ["approved", "suspended"]),
-    );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setUsers(snap.docs.map((d) => d.data() as UserProfile));
-    });
-    return unsubscribe;
-  }, []);
+  useRetryingSnapshot(
+    (onSuccess, onError) => {
+      const q = query(
+        collection(getClientFirestore(), "users"),
+        where("verificationStatus", "in", ["approved", "suspended"]),
+      );
+      return onSnapshot(
+        q,
+        (snap) => {
+          setError("");
+          setUsers(snap.docs.map((d) => d.data() as UserProfile));
+          onSuccess();
+        },
+        (err) => {
+          setError("Couldn't load users — retrying…");
+          onError(err.message);
+        },
+      );
+    },
+    [],
+  );
 
   function profileName(profile: UserProfile) {
     return profile.role === "job_seeker" ? profile.displayName : profile.businessName;
@@ -49,6 +62,14 @@ export function AllUsersQueue() {
     setUnsuspendingUid(uid);
     await unsuspendUserAccount(await getIdToken(), uid);
     setUnsuspendingUid(null);
+  }
+
+  async function changePlan(uid: string, plan: PricingPlan) {
+    await setEmployerPricingPlan(await getIdToken(), uid, plan);
+  }
+
+  if (error) {
+    return <p className="text-gorse">{error}</p>;
   }
 
   if (users === null) {
@@ -87,6 +108,22 @@ export function AllUsersQueue() {
                 <p className="text-sm text-granite">{profile.email}</p>
                 <p className="text-sm text-granite-soft">{profile.location}</p>
               </div>
+              {profile.role === "employer" && (
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-granite-soft">Plan</label>
+                  <select
+                    value={profile.pricingPlan ?? "trial"}
+                    onChange={(e) => changePlan(profile.uid, e.target.value as PricingPlan)}
+                    className="rounded-full border border-border-strong bg-paper px-3 py-1.5 text-sm font-medium text-ink outline-none transition-colors focus:border-tide"
+                  >
+                    {PRICING_PLANS.map((plan) => (
+                      <option key={plan} value={plan}>
+                        {PRICING_PLAN_LABELS[plan]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {banningUid === profile.uid ? (

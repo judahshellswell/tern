@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { collectionGroup, onSnapshot, query, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { READINESS_MC_MAX_WRONG, type ReadinessGateSubmission, type ReadinessRetakeDelay } from "@/lib/types";
 import { reviewReadinessGate } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
+import { useRetryingSnapshot } from "@/lib/use-retrying-snapshot";
 
 type FlaggedSubmission = ReadinessGateSubmission & { uid: string };
 
@@ -15,29 +16,32 @@ export function ReadinessQueue() {
   const [activeReject, setActiveReject] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const q = query(
-      collectionGroup(getClientFirestore(), "readinessGate"),
-      where("outcome", "==", "flagged"),
-    );
-    const unsubscribe = onSnapshot(
-      q,
-      (snap) => {
-        setError("");
-        setFlagged(
-          snap.docs.map((d) => ({
-            ...(d.data() as ReadinessGateSubmission),
-            uid: d.ref.parent.parent!.id,
-          })),
-        );
-      },
-      (err) => {
-        console.error("Readiness queue listener failed:", err);
-        setError("Couldn't load the readiness queue. Please refresh the page.");
-      },
-    );
-    return unsubscribe;
-  }, []);
+  useRetryingSnapshot(
+    (onSuccess, onError) => {
+      const q = query(
+        collectionGroup(getClientFirestore(), "readinessGate"),
+        where("outcome", "==", "flagged"),
+      );
+      return onSnapshot(
+        q,
+        (snap) => {
+          setError("");
+          setFlagged(
+            snap.docs.map((d) => ({
+              ...(d.data() as ReadinessGateSubmission),
+              uid: d.ref.parent.parent!.id,
+            })),
+          );
+          onSuccess();
+        },
+        (err) => {
+          setError("Couldn't load the readiness queue — retrying…");
+          onError(err.message);
+        },
+      );
+    },
+    [],
+  );
 
   if (error) {
     return <p className="text-gorse">{error}</p>;

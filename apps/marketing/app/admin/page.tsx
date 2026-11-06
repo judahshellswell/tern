@@ -8,6 +8,8 @@ import { ReportsQueue } from "@/components/admin/reports-queue";
 import { ReadinessQueue } from "@/components/admin/readiness-queue";
 import { InterviewAvailability } from "@/components/admin/interview-availability";
 import { InterviewQueue } from "@/components/admin/interview-queue";
+import { FlaggedMessagesQueue } from "@/components/admin/flagged-messages-queue";
+import { PlacementsList } from "@/components/admin/placements-list";
 
 export const metadata: Metadata = {
   title: "Admin — Tern",
@@ -62,6 +64,20 @@ export default function AdminPage() {
               <h2 className="mt-12 font-serif text-xl font-semibold">Booked interviews</h2>
               <div className="mt-4">
                 <InterviewQueue />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mt-12 font-serif text-xl font-semibold">Flagged messages</h2>
+              <div className="mt-4">
+                <FlaggedMessagesQueue />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="mt-12 font-serif text-xl font-semibold">Placements</h2>
+              <div className="mt-4">
+                <PlacementsList />
               </div>
             </section>
           </AdminGate>

@@ -118,7 +118,7 @@ service cloud.firestore {
                 && isValidIndustry(request.resource.data.industry))))
         || (isAdmin()
           && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(["verificationStatus", "rejectionReason"]));
+            .hasOnly(["verificationStatus", "rejectionReason", "pricingPlan", "trialStartedAt"]));
       allow delete: if false;
     }
 
@@ -334,6 +334,66 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- Placements ---
+    // A permanent record of a hire, one per application (id ==
+    // applicationId, same convention as conversations/{applicationId}).
+    // Written only by markApplicationHired (app/actions.ts) via the
+    // Admin SDK, which snapshots the employer's pricingPlan at the
+    // moment of hire — this must happen atomically with reading that
+    // plan, which a client write could never be trusted to do honestly
+    // (an employer could otherwise under-report their own plan). This
+    // block is a defensive boundary, same convention as readinessGate.
+    match /placements/{placementId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.employerId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    // --- Chat ---
+    // A conversation's id is always its application's id (see the
+    // Conversation type comment in lib/types.ts) — this is what lets a
+    // rule check "is this a real application linking these two people"
+    // with a single exists()/get() rather than a query. Unlocks the
+    // instant the application exists: both parties are already
+    // verified, readiness- and interview-gated by the time an
+    // application can exist at all (see the applications create rule
+    // above). All writes (conversation creation, sending a message,
+    // blocking, freezing on report) go through the openConversation/
+    // sendMessage/setMessageBlock/createReport server actions
+    // (app/actions.ts) via the Admin SDK — moderation and the
+    // report-freeze both need to happen atomically with the write a
+    // client can't be trusted to run honestly, same reasoning as the
+    // readiness gate and interview booking. This block is a defensive
+    // boundary, not the real write path.
+    function isConversationParty(uid, conversationId) {
+      return exists(/databases/$(database)/documents/conversations/$(conversationId))
+        && (get(/databases/$(database)/documents/conversations/$(conversationId)).data.employerId == uid
+          || get(/databases/$(database)/documents/conversations/$(conversationId)).data.applicantId == uid);
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if request.auth != null
+        && (request.auth.uid == resource.data.employerId || request.auth.uid == resource.data.applicantId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /conversations/{conversationId}/messages/{messageId} {
+      allow read: if request.auth != null
+        && (isConversationParty(request.auth.uid, conversationId) || isAdmin());
+      allow list: if request.auth != null
+        && (isConversationParty(request.auth.uid, conversationId) || isAdmin());
+      allow create, update, delete: if false;
+    }
+
+    // Collection-group read for the admin's flagged-messages queue
+    // (listing every flagged message across every conversation) — same
+    // reasoning as the readinessGate/interview collection-group blocks.
+    match /{path=**}/messages/{docId} {
+      allow list: if isAdmin();
+    }
+
     // --- Reports ---
     // Either role can report the other (job seeker reports an employer,
     // employer reports a job seeker). A report needs a real authenticated
@@ -353,7 +413,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.resource.data.reportedId))
         && (!("evidenceImagePaths" in request.resource.data)
           || (request.resource.data.evidenceImagePaths is list
-            && request.resource.data.evidenceImagePaths.size() <= 3));
+            && request.resource.data.evidenceImagePaths.size() <= 3))
+        && (!("conversationId" in request.resource.data)
+          || isConversationParty(request.auth.uid, request.resource.data.conversationId));
       allow update: if isAdmin()
         && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(["status", "resolvedAt", "resolvedBy"]);

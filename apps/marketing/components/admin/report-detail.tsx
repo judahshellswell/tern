@@ -140,6 +140,15 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           </div>
         )}
 
+        {report.conversationId && (
+          <Link
+            href={`/dashboard/messages/${report.conversationId}`}
+            className="mt-4 inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
+          >
+            View the conversation
+          </Link>
+        )}
+
         {report.status === "open" && (
           <div className="mt-4">
             {action === "ban" && (

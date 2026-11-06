@@ -65,6 +65,22 @@ export type JobSeekerProfile = {
   createdAt: string;
 };
 
+// Matches the pricing section on apps/marketing/app/employers/page.tsx.
+// "trial" is the honest default for every new signup — there's no
+// self-serve checkout, so a business is only ever moved onto a real
+// paying plan by the admin after agreeing terms with them directly
+// (see setEmployerPricingPlan in app/actions.ts). Kept manually in sync
+// with the marketing page's three tiers, same convention as
+// isValidIndustry() vs INDUSTRIES.
+export const PRICING_PLANS = ["trial", "ongoing_monthly", "seasonal_percent", "single_role"] as const;
+export type PricingPlan = (typeof PRICING_PLANS)[number];
+export const PRICING_PLAN_LABELS: Record<PricingPlan, string> = {
+  trial: "Free trial",
+  ongoing_monthly: "Ongoing — £195/month",
+  seasonal_percent: "Seasonal — 5% of placement pay",
+  single_role: "Single role — £95 one-off",
+};
+
 export type EmployerProfile = {
   role: "employer";
   uid: string;
@@ -81,6 +97,16 @@ export type EmployerProfile = {
   verificationStatus: VerificationStatus;
   rejectionReason?: string; // set by admin when verificationStatus is "rejected", "banned", or "suspended"
   emailVerified?: boolean;
+  // Both admin-only, set via setEmployerPricingPlan (app/actions.ts).
+  // pricingPlan defaults to "trial" the moment the business is first
+  // approved (see reviewVerification in app/actions.ts) — not set at
+  // signup, since an unverified business isn't a real customer yet.
+  // trialStartedAt is set once, at that same moment, and never updated
+  // again — it's "when their free trial began," not "when their plan
+  // last changed," so it stays meaningful even after an admin later
+  // moves them onto a paid plan.
+  pricingPlan?: PricingPlan;
+  trialStartedAt?: string;
   createdAt: string;
 };
 
@@ -219,6 +245,35 @@ export type Application = {
   createdAt: string;
 };
 
+// A permanent record of a hire — created once, server-side, the moment
+// an employer marks an application "hired" (see markApplicationHired in
+// app/actions.ts). Marking the application "hired" itself is a plain
+// client write the employer already made directly to the application
+// doc (see updateStatus in app/employer/jobs/[id]/page.tsx) and isn't
+// by itself enough: a real business event like this needs its own
+// durable record, independent of the application doc, so that a later
+// un-hire/status change or even the application being altered doesn't
+// erase what actually happened. The employer's pricingPlan is snapshotted
+// here at hire time (not read live off their profile later) so a plan
+// change afterward doesn't retroactively change what a past placement
+// looked like when it was actually made — same reasoning as a job's
+// content being snapshotted onto an Application at apply time.
+export type Placement = {
+  id: string; // == applicationId, one placement per application, at most
+  applicationId: string;
+  jobId: string;
+  jobTitle: string;
+  employerId: string;
+  employerName: string;
+  applicantId: string;
+  applicantName: string;
+  payMode?: PayMode;
+  payMin?: number | null;
+  payMax?: number | null;
+  pricingPlan: PricingPlan; // the employer's plan at the moment of hire
+  createdAt: string;
+};
+
 function isUnderAge(dateOfBirth: string, age: number): boolean {
   const dob = new Date(dateOfBirth);
   const nthBirthday = new Date(dob.getFullYear() + age, dob.getMonth(), dob.getDate());
@@ -267,6 +322,10 @@ export type Report = {
   reason: string;
   status: ReportStatus;
   evidenceImagePaths?: string[]; // Storage paths, e.g. "report-evidence/{reporterId}/{reportId}-0.jpg"; max 3
+  // Set when a report is filed from inside a chat conversation — lets
+  // createReport freeze that conversation immediately. Absent for any
+  // other report (e.g. reporting from an applicant/employer profile).
+  conversationId?: string;
   createdAt: string;
   resolvedAt?: string | null;
   resolvedBy?: string | null; // admin email, for an audit trail
@@ -287,7 +346,10 @@ export type NotificationKind =
   | "admin_readiness_review_pending"
   | "interview_booked"
   | "interview_completed"
-  | "interview_cancelled_by_admin";
+  | "interview_cancelled_by_admin"
+  | "new_message"
+  | "admin_message_flagged"
+  | "admin_placement_made";
 
 export type Notification = {
   id: string;
@@ -690,4 +752,62 @@ export type InterviewBooking = {
   markedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+// --- Chat ---
+// One conversation per application — the conversation's own id IS the
+// applicationId, not a fresh auto-id. Firestore rules can only
+// exists()/get() a single known path, never run a query, so reusing the
+// application's id is what lets a rule check "is this a real
+// application linking these two people" with one get(), the same reason
+// the readiness gate and interview booking use a fixed, predictable
+// path rather than a free-standing collection. Unlocks the instant the
+// application exists (both sides are already verified, readiness- and
+// interview-gated by that point) — see the applications create rule.
+export type Conversation = {
+  id: string; // == applicationId
+  applicationId: string;
+  jobId: string;
+  jobTitle: string;
+  employerId: string;
+  employerName: string;
+  applicantId: string;
+  applicantName: string;
+  // Either uid appearing here means that party has blocked the other —
+  // a blocked conversation stays readable (so the history isn't lost)
+  // but neither side can send a new message while a block is in place.
+  blockedBy: string[];
+  // Set true the moment either party reports the other on this
+  // conversation (see createReport's optional conversationId) — freezes
+  // sending immediately, before an admin has looked at anything, rather
+  // than waiting for a manual review to catch up. Cleared only by an
+  // admin resolving the report.
+  frozen: boolean;
+  lastMessageAt: string | null;
+  // Last time each party opened this conversation, as an ISO string —
+  // compared against lastMessageAt to show "unread" badges on the
+  // applications list (seeker side) and applicant board (employer
+  // side) without needing a live listener on every message.
+  lastReadByEmployer: string | null;
+  lastReadByApplicant: string | null;
+  createdAt: string;
+};
+
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  senderRole: UserRole;
+  body: string;
+  // Set server-side when the message body matches the moderation
+  // deny-list (lib/message-moderation.ts) — the message still sends
+  // (this is reactive flagging for admin review, not a block, per the
+  // product decision that 16+ users in Jersey don't need proactive
+  // content monitoring) but surfaces in the admin flagged-messages
+  // queue the same way a flagged readiness submission does.
+  flagged: boolean;
+  // Set by an admin clearing a flagged message from the queue — unlike
+  // readinessGate's approve/reject, there's no real verdict to apply to
+  // a single message, just an acknowledgement that it's been looked at.
+  reviewed?: boolean;
+  createdAt: string;
 };

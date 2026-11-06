@@ -9,7 +9,15 @@ import { useRouter } from "next/navigation";
 import { ReapplyForm } from "@/components/dashboard/reapply-form";
 import { EditProfileForm } from "@/components/dashboard/edit-profile-form";
 import { DeleteAccountSection } from "@/components/dashboard/delete-account";
-import { APPLICATION_STATUS_LABELS, type Application, type EmployerProfile, type UserProfile } from "@/lib/types";
+import {
+  APPLICATION_STATUS_LABELS,
+  type Application,
+  type EmployerProfile,
+  type InterviewBooking,
+  type ReadinessGateSubmission,
+  type UserProfile,
+} from "@/lib/types";
+import { UnreadBadge } from "@/components/chat/unread-badge";
 import { useEffect, useState } from "react";
 import { collection, doc, onSnapshot, orderBy, query, updateDoc, where } from "firebase/firestore";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
@@ -19,6 +27,24 @@ import { EmployerLogo } from "@/components/jobs/jobs-browser";
 export default function DashboardPage() {
   const { user, profile, loading } = useAuth();
   const router = useRouter();
+  const [readiness, setReadiness] = useState<ReadinessGateSubmission | null>(null);
+  const [booking, setBooking] = useState<InterviewBooking | null>(null);
+
+  useEffect(() => {
+    if (!user || profile?.role !== "job_seeker") return;
+    const ref = doc(getClientFirestore(), "users", user.uid, "readinessGate", "submission");
+    return onSnapshot(ref, (snap) => {
+      setReadiness(snap.exists() ? (snap.data() as ReadinessGateSubmission) : null);
+    });
+  }, [user, profile?.role]);
+
+  useEffect(() => {
+    if (!user || profile?.role !== "job_seeker") return;
+    const ref = doc(getClientFirestore(), "users", user.uid, "interview", "booking");
+    return onSnapshot(ref, (snap) => {
+      setBooking(snap.exists() ? (snap.data() as InterviewBooking) : null);
+    });
+  }, [user, profile?.role]);
 
   // Self-report: if this browser's own Auth session now shows the email
   // as verified (they clicked the link) but the stored profile doesn't
@@ -179,7 +205,7 @@ export default function DashboardPage() {
           <div className="mt-8 flex flex-col gap-3">
             {profile.role === "job_seeker" ? (
               <>
-                {profile.verificationStatus === "approved" && (
+                {profile.verificationStatus === "approved" && readiness?.outcome !== "passed" && (
                   <Link
                     href="/dashboard/readiness"
                     className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
@@ -190,17 +216,19 @@ export default function DashboardPage() {
                     </p>
                   </Link>
                 )}
-                {profile.verificationStatus === "approved" && (
-                  <Link
-                    href="/dashboard/interview"
-                    className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
-                  >
-                    <p className="font-serif text-lg font-semibold">Book your interview</p>
-                    <p className="mt-1 text-sm text-granite">
-                      A short call — the last step before you can apply.
-                    </p>
-                  </Link>
-                )}
+                {profile.verificationStatus === "approved" &&
+                  readiness?.outcome === "passed" &&
+                  booking?.outcome !== "completed" && (
+                    <Link
+                      href="/dashboard/interview"
+                      className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
+                    >
+                      <p className="font-serif text-lg font-semibold">Book your interview</p>
+                      <p className="mt-1 text-sm text-granite">
+                        A short call — the last step before you can apply.
+                      </p>
+                    </Link>
+                  )}
                 <Link
                   href="/jobs"
                   className="rounded-2xl border border-border-strong bg-paper-raised p-5 transition-colors hover:border-tide"
@@ -457,15 +485,18 @@ function AppliedJobs({ uid }: { uid: string }) {
               )}
             </div>
           </div>
-          {application.jobStatus === "closed" ? (
-            <p className="mt-3 text-sm text-gorse">
-              This job is no longer accepting applications and is currently being reviewed.
-            </p>
-          ) : (
-            <p className="mt-3 text-sm text-granite">
-              {APPLICATION_STATUS_LABELS[application.status]}
-            </p>
-          )}
+          <div className="mt-3 flex items-center gap-2">
+            {application.jobStatus === "closed" ? (
+              <p className="text-sm text-gorse">
+                This job is no longer accepting applications and is currently being reviewed.
+              </p>
+            ) : (
+              <p className="text-sm text-granite">
+                {APPLICATION_STATUS_LABELS[application.status]}
+              </p>
+            )}
+            <UnreadBadge applicationId={application.id} viewerRole="job_seeker" />
+          </div>
         </Link>
       ))}
     </div>

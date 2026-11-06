@@ -17,7 +17,7 @@ export function Hero() {
       <div className="relative mx-auto grid max-w-6xl gap-12 px-6 pb-20 pt-16 md:grid-cols-[1.15fr_0.85fr] md:pb-28 md:pt-24">
         <div className="animate-rise">
           <p className="mb-6 inline-flex items-center gap-2 rounded-full border border-border-strong bg-paper-raised px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-[0.08em] text-tide">
-            <span className="h-1.5 w-1.5 rounded-full bg-gorse" />
+            <span className="h-1.5 w-1.5 rounded-full bg-amber" />
             Launching first in Jersey
           </p>
           <h1 className="text-balance font-serif text-[3.2rem] font-bold leading-[0.96] tracking-tight sm:text-7xl">
@@ -108,7 +108,7 @@ function HeroBackdrop() {
     <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" aria-hidden="true">
       <div className="bg-grain absolute inset-0 opacity-[0.25]" />
       <div className="absolute -right-44 -top-48 h-[640px] w-[640px] rounded-full bg-tide/10 blur-3xl" />
-      <div className="absolute -bottom-32 -left-48 h-[480px] w-[480px] rounded-full bg-gorse/10 blur-3xl" />
+      <div className="absolute -bottom-32 -left-48 h-[480px] w-[480px] rounded-full bg-amber/10 blur-3xl" />
       <svg
         className="absolute right-10 top-14 h-[520px] w-[520px] text-tide opacity-20"
         viewBox="0 0 560 560"
@@ -146,7 +146,7 @@ function SnapshotCard() {
           </span>
         </div>
 
-        <div className="mt-[18px] rounded-2xl bg-gradient-to-br from-gorse to-gorse/80 px-4 py-3.5 text-[13px] font-bold text-[#12211e]">
+        <div className="mt-[18px] rounded-2xl bg-gradient-to-br from-amber to-amber/80 px-4 py-3.5 text-[13px] font-bold text-[#12211e]">
           🔥 3 new jobs match you this week
         </div>
 

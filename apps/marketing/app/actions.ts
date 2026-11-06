@@ -22,9 +22,20 @@ import {
   markInterviewOutcome,
   cancelInterviewBooking,
 } from "@/lib/interview-gate";
+import {
+  getOrCreateConversation,
+  markConversationRead,
+  sendChatMessage,
+  setConversationBlock,
+  freezeConversation,
+  unfreezeConversation,
+  markMessageReviewed,
+} from "@/lib/chat";
+import { recordPlacement } from "@/lib/placements";
 import type {
   ApplicationStatus,
   Parish,
+  PricingPlan,
   ReadinessRetakeDelay,
   Report,
 } from "@/lib/types";
@@ -70,10 +81,52 @@ export async function notifyAdminOfSignup(idToken: string) {
   }
 }
 
-// Called right after the admin rejects a job seeker or employer with a
-// reason. Same best-effort contract — the rejection itself is already
-// written to Firestore by the time this runs, so a failed send shouldn't
-// be surfaced as if the rejection failed.
+// Admin action: approves a pending user. For an employer, this is also
+// the moment their free trial starts — pricingPlan defaults to "trial"
+// and trialStartedAt is stamped with the server's own clock (not a
+// client-supplied date, which could be wrong or backdated). A job
+// seeker approval touches neither field. Replaces the old direct
+// client updateDoc({ verificationStatus: "approved" }) specifically so
+// trialStartedAt can be a real server timestamp rather than something
+// the approving admin's browser clock would have to supply.
+export async function approveUser(idToken: string, uid: string) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+
+  const snap = await db.collection("users").doc(uid).get();
+  const profile = snap.data();
+  if (!profile) return { ok: false, error: "User not found." } as const;
+
+  const update: Record<string, unknown> = { verificationStatus: "approved" };
+  if (profile.role === "employer" && !profile.pricingPlan) {
+    update.pricingPlan = "trial";
+    update.trialStartedAt = FieldValue.serverTimestamp();
+  }
+  await db.collection("users").doc(uid).update(update);
+  return { ok: true } as const;
+}
+
+// Admin action: moves an employer onto a real pricing plan once terms
+// have actually been agreed with them directly — there's no self-serve
+// checkout, so this is a manual record of a real-world conversation,
+// not a billing integration. Does not touch trialStartedAt, which
+// stays "when their free trial began" regardless of what plan they're
+// on now.
+export async function setEmployerPricingPlan(idToken: string, uid: string, plan: PricingPlan) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+
+  const snap = await db.collection("users").doc(uid).get();
+  const profile = snap.data();
+  if (!profile || profile.role !== "employer") {
+    return { ok: false, error: "Employer not found." } as const;
+  }
+  await db.collection("users").doc(uid).update({ pricingPlan: plan });
+  return { ok: true } as const;
+}
+
 export async function notifyRejection(idToken: string, uid: string, reason: string) {
   try {
     await requireAdmin(idToken);
@@ -175,6 +228,69 @@ export async function notifyApplicantOfStatusChange(idToken: string, application
     console.error("Failed to send status change notification:", err);
     return { ok: false } as const;
   }
+}
+
+// Called right after the employer's own client write sets an
+// application's status to "hired" (see updateStatus in
+// app/employer/jobs/[id]/page.tsx). Re-reads the application rather
+// than trusting the caller's word that it's actually hired — same
+// defensive pattern as notifyApplicantOfStatusChange just above.
+// Creates the permanent placement record (recordPlacement is
+// idempotent on applicationId, so a retry here is harmless) and always
+// notifies the admin — including during a "trial" plan, per the
+// product decision that a placement notification should never be
+// silent just because it isn't billable yet.
+export async function markApplicationHired(idToken: string, applicationId: string) {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+
+  const appSnap = await db.collection("applications").doc(applicationId).get();
+  const application = appSnap.data();
+  if (!application || application.employerId !== caller.uid) return NOT_AUTHORIZED;
+  if (application.status !== "hired") {
+    return { ok: false, error: "This application isn't marked hired." } as const;
+  }
+
+  const result = await recordPlacement(db, applicationId);
+  if (!result.ok) return result;
+
+  try {
+    const adminUid = await getAdminUid();
+    if (adminUid) {
+      const payLine =
+        result.placement.payMode === "fixed"
+          ? `£${result.placement.payMin}`
+          : result.placement.payMin != null && result.placement.payMax != null
+            ? `£${result.placement.payMin}–£${result.placement.payMax}`
+            : "pay not set";
+      await writeNotification(
+        adminUid,
+        "admin_placement_made",
+        "New placement made",
+        `${result.placement.employerName} hired ${result.placement.applicantName} for ${result.placement.jobTitle} (${payLine}) — plan: ${result.placement.pricingPlan}`,
+        "/admin",
+      );
+    }
+  } catch (err) {
+    console.error("Failed to send placement notification:", err);
+  }
+
+  return result;
+}
+
+// Admin-only cleanup for test/demo placements — a placement is otherwise
+// permanent (see recordPlacement's comment), so this is a deliberate
+// escape hatch for removing records created while testing the hire flow,
+// not something either party to the placement can trigger themselves.
+export async function deletePlacement(
+  idToken: string,
+  placementId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  await db.collection("placements").doc(placementId).delete();
+  return { ok: true };
 }
 
 // Called from the readiness-gate submission form. Unlike the other
@@ -392,6 +508,94 @@ export async function cancelInterview(idToken: string, uid: string) {
   }
 
   return result;
+}
+
+// Opens (or lazily creates) the chat for an application. Either party
+// to that application can call this — getOrCreateConversation itself
+// checks the caller is the application's employer or applicant.
+export async function openConversation(idToken: string, applicationId: string) {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  const result = await getOrCreateConversation(db, applicationId, caller.uid);
+  if (result.ok) await markConversationRead(db, applicationId, caller.uid);
+  return result;
+}
+
+// Sends a chat message. Runs the keyword moderation check synchronously
+// (cheap substring match, not an AI call — see lib/message-moderation.ts)
+// before the write, then best-effort notifies the other party.
+export async function sendMessage(idToken: string, applicationId: string, body: string) {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+
+  const profileSnap = await db.collection("users").doc(caller.uid).get();
+  const profile = profileSnap.data();
+  if (!profile) return NOT_AUTHORIZED;
+
+  const result = await sendChatMessage(db, applicationId, caller.uid, profile.role, body);
+  if (!result.ok) return result;
+
+  try {
+    const convoSnap = await db.collection("conversations").doc(applicationId).get();
+    const conversation = convoSnap.data();
+    if (conversation) {
+      const recipientId = caller.uid === conversation.employerId ? conversation.applicantId : conversation.employerId;
+      const senderName = caller.uid === conversation.employerId ? conversation.employerName : conversation.applicantName;
+      await writeNotification(
+        recipientId,
+        "new_message",
+        `New message from ${senderName}`,
+        result.message.body.length > 120 ? `${result.message.body.slice(0, 120)}…` : result.message.body,
+        `/dashboard/messages/${applicationId}`,
+      );
+    }
+    if (result.message.flagged) {
+      const adminUid = await getAdminUid();
+      if (adminUid) {
+        await writeNotification(
+          adminUid,
+          "admin_message_flagged",
+          "A message was flagged for review",
+          `A message in conversation ${applicationId} was automatically flagged.`,
+          "/admin",
+        );
+      }
+    }
+  } catch (err) {
+    console.error("Failed to send chat notification:", err);
+  }
+
+  return result;
+}
+
+// Either party can block the other on their shared conversation —
+// blocking is per-caller (stored as their own uid in blockedBy), so
+// either side can act unilaterally without the other's cooperation.
+export async function setMessageBlock(idToken: string, applicationId: string, blocked: boolean) {
+  const caller = await requireUser(idToken).catch(() => null);
+  if (!caller) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  return setConversationBlock(db, applicationId, caller.uid, blocked);
+}
+
+// Admin action: lifts the freeze a report placed on a conversation,
+// e.g. after reviewing it and finding nothing actionable. The report
+// itself stays on record regardless (see dismissReport/markReportActioned).
+export async function reopenConversation(idToken: string, applicationId: string) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  return unfreezeConversation(db, applicationId);
+}
+
+// Admin action: clears a flagged message from the flagged-messages queue.
+export async function reviewFlaggedMessage(idToken: string, applicationId: string, messageId: string) {
+  const admin = await requireAdmin(idToken).catch(() => null);
+  if (!admin) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  return markMessageReviewed(db, applicationId, messageId);
 }
 
 export type ApplicantProfileForEmployer = {
@@ -681,6 +885,7 @@ export type CreateReportParams = {
   reportedId: string;
   reason: string;
   evidenceImagePaths?: string[];
+  conversationId?: string; // reporting from inside a chat — freezes it immediately
 };
 
 const MAX_REPORT_REASON_LENGTH = 2000;
@@ -730,6 +935,18 @@ export async function createReport(
   const reportedName: string =
     reportedProfile.role === "job_seeker" ? reportedProfile.displayName : reportedProfile.businessName;
 
+  // A conversationId must actually be a conversation the reporter is
+  // party to — otherwise anyone could freeze a stranger's chat just by
+  // guessing an applicationId.
+  let conversationId: string | undefined;
+  if (params.conversationId) {
+    const convoSnap = await db.collection("conversations").doc(params.conversationId).get();
+    const conversation = convoSnap.data();
+    if (conversation && (conversation.employerId === reporterId || conversation.applicantId === reporterId)) {
+      conversationId = params.conversationId;
+    }
+  }
+
   const reportRef = db.collection("reports").doc(params.reportId);
   if ((await reportRef.get()).exists) {
     return { ok: false, error: "This report was already submitted." };
@@ -743,8 +960,17 @@ export async function createReport(
     reason,
     status: "open",
     ...(evidenceImagePaths.length ? { evidenceImagePaths } : {}),
+    ...(conversationId ? { conversationId } : {}),
     createdAt: FieldValue.serverTimestamp(),
   });
+
+  if (conversationId) {
+    try {
+      await freezeConversation(db, conversationId);
+    } catch (err) {
+      console.error("Failed to freeze conversation after report:", err);
+    }
+  }
 
   try {
     await notifyAdminOfReport({
@@ -816,6 +1042,14 @@ export async function dismissReport(
     resolvedAt: FieldValue.serverTimestamp(),
     resolvedBy,
   });
+
+  if (report.conversationId) {
+    try {
+      await unfreezeConversation(db, report.conversationId);
+    } catch (err) {
+      console.error("Failed to unfreeze conversation after report dismissal:", err);
+    }
+  }
 
   try {
     const openCount = await countOpenReportsAgainst(db, report.reportedId);

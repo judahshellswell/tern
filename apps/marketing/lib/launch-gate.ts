@@ -11,6 +11,6 @@
 // To go live on launch day: flip this to false (or delete it and the
 // three redirects in app/sign-up, app/log-in, app/forgot-password — see
 // each page.tsx for the single `if` block to remove).
-export const LAUNCH_GATE_ACTIVE = true;
+export const LAUNCH_GATE_ACTIVE = false;
 
 export const LAUNCH_DATE_LABEL = "1 January 2027";

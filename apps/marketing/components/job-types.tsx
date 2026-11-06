@@ -3,18 +3,18 @@ const types = [
   { label: "Apprenticeship", note: "Earn while you train", variant: "plain" as const },
   { label: "Internship", note: "Fixed-term, hands-on", variant: "plain" as const },
   { label: "Temporary", note: "Short cover roles", variant: "plain" as const },
-  { label: "Seasonal", note: "Summer & festive", variant: "gorse" as const },
+  { label: "Seasonal", note: "Summer & festive", variant: "amber" as const },
 ];
 
 const variantClasses = {
   tide: "bg-tide text-paper",
-  gorse: "bg-gorse text-[#12211e]",
+  amber: "bg-amber text-[#12211e]",
   plain: "bg-paper-raised text-ink",
 };
 
 const noteClasses = {
   tide: "text-paper/70",
-  gorse: "text-[#12211e]/65",
+  amber: "text-[#12211e]/65",
   plain: "text-granite-soft",
 };
 

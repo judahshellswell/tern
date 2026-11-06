@@ -26,11 +26,11 @@ const steps = [
   },
   {
     title: "Review real applicants on a simple board",
-    body: "New, Reviewed, Shortlisted, Interview, Hired. Every card is a full Potential Snapshot — skills, portfolio, downloadable CV — from someone who already passed the readiness bar.",
+    body: "New, Reviewed, Shortlisted, Rejected, Hired. Every card is a full Potential Snapshot — skills, portfolio, downloadable CV — from someone who already passed the readiness bar.",
   },
   {
-    title: "Message through structured templates",
-    body: "Invite to interview, request more information, send a status update. No open chat, no risk of a stray message going somewhere it shouldn't — professional by default.",
+    title: "Message candidates directly, safely",
+    body: "Once someone applies, you can message them straight from their application — both sides are already ID-verified by that point. Either side can block or report at any time, and anything reported is paused until we've reviewed it.",
   },
 ];
 

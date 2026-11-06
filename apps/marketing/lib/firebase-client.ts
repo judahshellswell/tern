@@ -8,7 +8,7 @@ import {
   initializeAuth,
   type Auth,
 } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { initializeFirestore, type Firestore } from "firebase/firestore";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -64,7 +64,20 @@ export function getClientFirestore(): Firestore {
   if (!isFirebaseConfigured()) {
     throw new Error("Firebase client config is missing — check NEXT_PUBLIC_FIREBASE_* env vars.");
   }
-  if (!firestore) firestore = getFirestore(getClientApp());
+  if (!firestore) {
+    // Auto-detects whether the browser's network path (corporate
+    // proxies, some mobile carriers, certain privacy/extension setups,
+    // and — as found while testing this — headless Chromium) can
+    // sustain Firestore's normal streaming WebChannel connection, and
+    // transparently falls back to long-polling if not. Without this,
+    // a listener on an incompatible network can silently hang forever
+    // with no success or error callback ever firing, which looks
+    // exactly like "the page needs a refresh" since a fresh page load
+    // sometimes lands on a path that does work.
+    firestore = initializeFirestore(getClientApp(), {
+      experimentalAutoDetectLongPolling: true,
+    });
+  }
   return firestore;
 }
 

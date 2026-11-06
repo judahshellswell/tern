@@ -6,8 +6,15 @@
   --color-paper-raised: #ffffff;
   --color-tide: #1f5f5b;
   --color-tide-bright: #3fa79e;
-  --color-gorse: #b87418;
-  --color-gorse-bg: #f5e6cc;
+  --color-gorse: #c0352b;
+  --color-gorse-bg: #f8d9d6;
+  /* Decorative amber accent — the homepage "new jobs match you" badge
+     and the Seasonal job-type chip. Separate from --color-gorse (now
+     red, used for anything needing real attention: bans, errors,
+     unread-message badges, the notification bell) on purpose, so this
+     stays a calm highlight and never gets mistaken for an alert. */
+  --color-amber: #b87418;
+  --color-amber-bg: #f5e6cc;
   --color-granite: #6b7570;
   --color-granite-soft: #8b9490;
   --color-border: #e4e0d6;
@@ -30,8 +37,10 @@
   --color-paper-raised: #162521;
   --color-tide: #5fc2b8;
   --color-tide-bright: #7adbd1;
-  --color-gorse: #e3a85c;
-  --color-gorse-bg: #2e2515;
+  --color-gorse: #e2645a;
+  --color-gorse-bg: #3a1f1c;
+  --color-amber: #e3a85c;
+  --color-amber-bg: #2e2515;
   --color-granite: #a9b3ad;
   --color-granite-soft: #7c8781;
   --color-border: #243b36;
@@ -51,8 +60,10 @@
     --color-paper-raised: #162521;
     --color-tide: #5fc2b8;
     --color-tide-bright: #7adbd1;
-    --color-gorse: #e3a85c;
-    --color-gorse-bg: #2e2515;
+    --color-gorse: #e2645a;
+    --color-gorse-bg: #3a1f1c;
+    --color-amber: #e3a85c;
+    --color-amber-bg: #2e2515;
     --color-granite: #a9b3ad;
     --color-granite-soft: #7c8781;
     --color-border: #243b36;
@@ -70,6 +81,8 @@
   --color-tide-bright: var(--color-tide-bright);
   --color-gorse: var(--color-gorse);
   --color-gorse-bg: var(--color-gorse-bg);
+  --color-amber: var(--color-amber);
+  --color-amber-bg: var(--color-amber-bg);
   --color-granite: var(--color-granite);
   --color-granite-soft: var(--color-granite-soft);
   --color-border: var(--color-border);

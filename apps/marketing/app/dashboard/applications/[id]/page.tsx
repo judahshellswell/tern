@@ -150,6 +150,15 @@ function ApplicationDetail({ applicationId }: { applicationId: string }) {
           <p className="mt-3 whitespace-pre-wrap text-sm text-ink">{application.coverNote}</p>
         )}
 
+        {application.status !== "withdrawn" && (
+          <Link
+            href={`/dashboard/messages/${application.id}`}
+            className="mt-4 inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
+          >
+            Message {application.employerName}
+          </Link>
+        )}
+
         {application.status !== "withdrawn" && application.status !== "hired" && (
           <div className="mt-4">
             {!confirmingWithdraw ? (

@@ -24,8 +24,9 @@ import {
   type Job,
 } from "@/lib/types";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
-import { notifyApplicantOfStatusChange } from "@/app/actions";
+import { notifyApplicantOfStatusChange, markApplicationHired } from "@/app/actions";
 import { getIdToken } from "@/lib/id-token";
+import { UnreadBadge } from "@/components/chat/unread-badge";
 
 // "withdrawn" is a one-way action the applicant takes on themself — it
 // never appears as something the employer can select.
@@ -76,8 +77,15 @@ function JobApplicants({ jobId }: { jobId: string }) {
     return unsubscribe;
   }, [user, jobId]);
 
+  const jobEmployerId = job?.employerId;
+
   useEffect(() => {
-    if (!user || !job || job.employerId !== user.uid) return;
+    // Keyed on jobEmployerId (a primitive), not the job object itself —
+    // onSnapshot hands back a new job object on every fire, even when
+    // nothing relevant changed, which was tearing down and rebuilding
+    // this entire applications listener on every job-doc snapshot and
+    // made the board noticeably slow to settle.
+    if (!user || !jobEmployerId || jobEmployerId !== user.uid) return;
     const q = query(
       collection(getClientFirestore(), "applications"),
       where("employerId", "==", user.uid),
@@ -97,7 +105,7 @@ function JobApplicants({ jobId }: { jobId: string }) {
       setApplications(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Application));
     });
     return unsubscribe;
-  }, [user, job, jobId]);
+  }, [user, jobEmployerId, jobId]);
 
   async function updateStatus(application: Application, status: ApplicationStatus) {
     await updateDoc(doc(getClientFirestore(), "applications", application.id), { status });
@@ -106,6 +114,13 @@ function JobApplicants({ jobId }: { jobId: string }) {
     // not a real runtime path.
     if (status !== "submitted" && status !== "withdrawn") {
       void getIdToken().then((token) => notifyApplicantOfStatusChange(token, application.id));
+    }
+    // "hired" additionally records a permanent placement and notifies
+    // the admin — see markApplicationHired. Fired after the status
+    // write above has already landed, since the action re-reads the
+    // application and requires status to already be "hired".
+    if (status === "hired") {
+      void getIdToken().then((token) => markApplicationHired(token, application.id));
     }
   }
 
@@ -269,12 +284,15 @@ function JobApplicants({ jobId }: { jobId: string }) {
                 className="rounded-2xl border border-border-strong bg-paper-raised p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <Link
-                    href={`/employer/applicants/${application.applicantId}`}
-                    className="font-serif text-lg font-semibold text-ink underline decoration-border-strong underline-offset-4 transition-colors hover:text-tide hover:decoration-tide"
-                  >
-                    {application.applicantName}
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/employer/applicants/${application.applicantId}`}
+                      className="font-serif text-lg font-semibold text-ink underline decoration-border-strong underline-offset-4 transition-colors hover:text-tide hover:decoration-tide"
+                    >
+                      {application.applicantName}
+                    </Link>
+                    <UnreadBadge applicationId={application.id} viewerRole="employer" />
+                  </div>
                   {application.status === "withdrawn" ? (
                     <span className="rounded-full bg-gorse-bg px-3 py-1.5 text-sm font-medium text-gorse">
                       Withdrawn
@@ -299,6 +317,14 @@ function JobApplicants({ jobId }: { jobId: string }) {
                   <p className="mt-3 whitespace-pre-wrap text-sm text-ink">
                     {application.coverNote}
                   </p>
+                )}
+                {application.status !== "withdrawn" && (
+                  <Link
+                    href={`/dashboard/messages/${application.id}`}
+                    className="mt-3 inline-block text-sm font-medium text-tide underline hover:text-tide-bright"
+                  >
+                    Message {application.applicantName}
+                  </Link>
                 )}
               </div>
             ))}

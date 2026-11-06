@@ -10,8 +10,8 @@ const pillars = [
     accent: "tide" as const,
   },
   {
-    title: "No open messaging",
-    body: "Every message is a structured template — interview invites, information requests, status updates. No free text, no unsupervised chat, no way for a stranger to just message a candidate.",
+    title: "Messaging, only once it's earned",
+    body: "Chat only unlocks between an employer and a candidate who's actually applied to their job — never a stranger. Messages are screened for language with no relevance to recruitment, either side can block the other, and a report freezes the conversation until we've reviewed it.",
     accent: "gorse" as const,
   },
 ];

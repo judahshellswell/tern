@@ -6,27 +6,40 @@ import { collection, doc, onSnapshot, query, updateDoc, where } from "firebase/f
 import { ref, getDownloadURL } from "firebase/storage";
 import { getClientFirestore, getClientStorage } from "@/lib/firebase-client";
 import type { UserProfile } from "@/lib/types";
-import { notifyRejection, banUserAccount } from "@/app/actions";
+import { notifyRejection, banUserAccount, approveUser } from "@/app/actions";
 import { deleteReviewedIdDocument } from "@/app/account-actions";
 import { getIdToken } from "@/lib/id-token";
 import { ReasonForm } from "@/components/admin/reason-form";
+import { useRetryingSnapshot } from "@/lib/use-retrying-snapshot";
 
 type Action = { uid: string; kind: "reject" | "ban" };
 
 export function AdminVerificationQueue() {
   const [pending, setPending] = useState<UserProfile[] | null>(null);
+  const [error, setError] = useState("");
   const [activeAction, setActiveAction] = useState<Action | null>(null);
 
-  useEffect(() => {
-    const q = query(
-      collection(getClientFirestore(), "users"),
-      where("verificationStatus", "==", "pending"),
-    );
-    const unsubscribe = onSnapshot(q, (snap) => {
-      setPending(snap.docs.map((d) => d.data() as UserProfile));
-    });
-    return unsubscribe;
-  }, []);
+  useRetryingSnapshot(
+    (onSuccess, onError) => {
+      const q = query(
+        collection(getClientFirestore(), "users"),
+        where("verificationStatus", "==", "pending"),
+      );
+      return onSnapshot(
+        q,
+        (snap) => {
+          setError("");
+          setPending(snap.docs.map((d) => d.data() as UserProfile));
+          onSuccess();
+        },
+        (err) => {
+          setError("Couldn't load the verification queue — retrying…");
+          onError(err.message);
+        },
+      );
+    },
+    [],
+  );
 
   // ID documents are only kept until a decision is made — every outcome
   // (approve, reject, ban) deletes the uploaded file straight after.
@@ -39,8 +52,7 @@ export function AdminVerificationQueue() {
   }
 
   async function approve(uid: string) {
-    const userRef = doc(getClientFirestore(), "users", uid);
-    await updateDoc(userRef, { verificationStatus: "approved" });
+    await approveUser(await getIdToken(), uid);
     await deleteIdAfterDecision(uid);
   }
 
@@ -56,6 +68,10 @@ export function AdminVerificationQueue() {
     await banUserAccount(await getIdToken(), profile.uid, reason);
     await deleteIdAfterDecision(profile.uid);
     setActiveAction(null);
+  }
+
+  if (error) {
+    return <p className="text-gorse">{error}</p>;
   }
 
   if (pending === null) {
