@@ -33,6 +33,14 @@ export function ChatThread({
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
+  // readOnly (admin) viewers skip openConversation entirely and read an
+  // already-existing conversation straight away; everyone else must wait
+  // for openConversation to resolve before the listeners below attach —
+  // otherwise they can race the server action that creates the
+  // conversations/{applicationId} doc, and the Firestore rules (which
+  // key off resource.data on that doc) reject a snapshot of a doc that
+  // doesn't exist yet with permission-denied rather than "not found".
+  const [readyToListen, setReadyToListen] = useState(readOnly);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   // Opens (or lazily creates) the conversation once on mount — this is
@@ -46,7 +54,11 @@ export function ChatThread({
       .then((token) => openConversation(token, applicationId))
       .then((result) => {
         if (cancelled) return;
-        if (!result.ok) setError(result.error);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        setReadyToListen(true);
       })
       .catch(() => {
         if (!cancelled) setError("Couldn't open this conversation.");
@@ -57,15 +69,17 @@ export function ChatThread({
   }, [applicationId, readOnly]);
 
   useEffect(() => {
+    if (!readyToListen) return;
     const unsubscribe: Unsubscribe = onSnapshot(
       doc(getClientFirestore(), "conversations", applicationId),
       (snap) => setConversation(snap.exists() ? ({ id: snap.id, ...snap.data() } as Conversation) : null),
       () => setConversation(null),
     );
     return unsubscribe;
-  }, [applicationId]);
+  }, [applicationId, readyToListen]);
 
   useEffect(() => {
+    if (!readyToListen) return;
     const q = query(
       collection(getClientFirestore(), "conversations", applicationId, "messages"),
       orderBy("createdAt", "asc"),
@@ -74,7 +88,7 @@ export function ChatThread({
       setMessages(snap.docs.map((d) => d.data() as ChatMessage));
     });
     return unsubscribe;
-  }, [applicationId]);
+  }, [applicationId, readyToListen]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
