@@ -309,6 +309,7 @@ service cloud.firestore {
           || (request.auth.uid == resource.data.employerId
             && resource.data.applicantBanned == false
             && resource.data.applicantSuspended == false));
+      allow list: if isAdmin();
       allow create: if request.auth != null
         && request.auth.uid == request.resource.data.applicantId
         && isApprovedJobSeeker(request.auth.uid)
@@ -331,6 +332,11 @@ service cloud.firestore {
             && resource.data.status != "hired"
             && request.resource.data.status == "withdrawn"
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status"])));
+      // Admin-only, via deleteApplication (app/actions.ts) — cleanup for
+      // stray test/demo applications, same convention as placements
+      // above. This block is a defensive boundary, not the real write
+      // path (the Admin SDK bypasses rules entirely); it exists so a
+      // client write can never delete an application directly.
       allow delete: if false;
     }
 

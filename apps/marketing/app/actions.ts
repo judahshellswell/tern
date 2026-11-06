@@ -293,6 +293,25 @@ export async function deletePlacement(
   return { ok: true };
 }
 
+// Admin-only cleanup for a stray test/demo application — same escape
+// hatch as deletePlacement, for the earlier stage of the same lifecycle
+// (an application that was never hired, so has no placement record to
+// delete). Also removes the application's conversation, if one exists,
+// since a conversation only makes sense attached to its application.
+export async function deleteApplication(
+  idToken: string,
+  applicationId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!(await requireAdmin(idToken).catch(() => null))) return NOT_AUTHORIZED;
+  const db = getAdminFirestore();
+  const convoRef = db.collection("conversations").doc(applicationId);
+  if ((await convoRef.get()).exists) {
+    await db.recursiveDelete(convoRef);
+  }
+  await db.collection("applications").doc(applicationId).delete();
+  return { ok: true };
+}
+
 // Called from the readiness-gate submission form. Unlike the other
 // notify* actions in this file, the AI grading call itself is NOT a
 // best-effort side effect — it's the actual state transition (pass vs.

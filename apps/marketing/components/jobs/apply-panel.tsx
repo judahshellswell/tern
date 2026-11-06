@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { addDoc, collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, query, serverTimestamp, where } from "firebase/firestore";
 import { getClientFirestore } from "@/lib/firebase-client";
 import { useAuth } from "@/components/auth/auth-provider";
 import { notifyEmployerOfNewApplication } from "@/app/actions";
@@ -60,6 +60,7 @@ export function ApplyPanel({
   const [interviewOutcome, setInterviewOutcome] = useState<
     InterviewBookingOutcome | "loading" | "none"
   >("loading");
+  const [alreadyApplied, setAlreadyApplied] = useState<"loading" | boolean>("loading");
 
   useEffect(() => {
     if (!user) return;
@@ -78,6 +79,23 @@ export function ApplyPanel({
     });
     return unsubscribe;
   }, [user]);
+
+  // Applications don't have a deterministic id tying them to one
+  // (jobId, applicantId) pair, so nothing stops a second submit at the
+  // database level — this check exists purely to give a clear "already
+  // applied" state instead of letting someone apply twice by accident.
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(getClientFirestore(), "applications"),
+      where("applicantId", "==", user.uid),
+      where("jobId", "==", jobId),
+    );
+    const unsubscribe = onSnapshot(q, (snap) => {
+      setAlreadyApplied(!snap.empty);
+    });
+    return unsubscribe;
+  }, [user, jobId]);
 
   if (loading) {
     return <p className="text-granite">Loading…</p>;
@@ -178,6 +196,22 @@ export function ApplyPanel({
           {profile.displayName === undefined ? "" : `Good luck, ${profile.displayName.split(" ")[0]}. `}
           The employer will be in touch through Tern.
         </p>
+      </div>
+    );
+  }
+
+  if (alreadyApplied === "loading") {
+    return <p className="text-granite">Loading…</p>;
+  }
+
+  if (alreadyApplied) {
+    return (
+      <div className="rounded-2xl border border-border-strong bg-paper-raised p-6 text-center">
+        <p className="font-serif text-lg font-semibold">You&rsquo;ve already applied.</p>
+        <p className="mt-1 text-sm text-granite">Check your dashboard for updates from this employer.</p>
+        <Link href="/dashboard" className="mt-3 inline-block font-medium text-tide underline">
+          Go to dashboard
+        </Link>
       </div>
     );
   }
