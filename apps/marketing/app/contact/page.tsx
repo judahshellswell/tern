@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 const CONTACT_EMAIL = "hello@tern.je";
 
 export default function ContactPage() {
-  if (LAUNCH_GATE_ACTIVE) redirect("/coming-soon");
+  if (LAUNCH_GATE_ACTIVE) redirect("/");
 
   return (
     <>

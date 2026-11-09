@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function LogInPage() {
   // --- TEMPORARY pre-launch gate, remove this block on launch day ---
-  if (LAUNCH_GATE_ACTIVE) redirect("/coming-soon");
+  if (LAUNCH_GATE_ACTIVE) redirect("/");
   // --- end temporary block ---
 
   return (

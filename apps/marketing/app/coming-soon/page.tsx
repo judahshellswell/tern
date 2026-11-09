@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { LAUNCH_DATE_LABEL } from "@/lib/launch-gate";
@@ -24,25 +23,11 @@ export default function ComingSoonPage() {
               Accounts open {LAUNCH_DATE_LABEL}.
             </h1>
             <p className="mx-auto mt-5 max-w-[55ch] text-lg text-granite">
-              We&rsquo;re not collecting any sign-ups or personal details yet —
-              Tern opens for job seekers and employers in Jersey on{" "}
-              {LAUNCH_DATE_LABEL}. You can still browse what&rsquo;s coming
-              below.
+              Tern is a part-time and entry-level job platform for Jersey,
+              opening for job seekers and employers on {LAUNCH_DATE_LABEL}.
+              We&rsquo;re not collecting any sign-ups, personal details, or
+              listing jobs yet.
             </p>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                href="/jobs"
-                className="rounded-full bg-tide px-6 py-3 text-[15px] font-semibold text-paper transition-colors hover:bg-tide-bright"
-              >
-                Browse jobs
-              </Link>
-              <Link
-                href="/about"
-                className="text-sm font-medium text-ink transition-colors hover:text-tide"
-              >
-                About Tern
-              </Link>
-            </div>
           </div>
         </section>
       </main>

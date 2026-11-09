@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
 import Link from "next/link";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export const metadata: Metadata = {
   title: "FAQ — Tern",
@@ -82,6 +84,8 @@ const groups: { heading: string; items: { q: string; a: string }[] }[] = [
 ];
 
 export default function FaqPage() {
+  if (LAUNCH_GATE_ACTIVE) redirect("/");
+
   return (
     <>
       <SiteHeader />

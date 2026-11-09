@@ -17,20 +17,22 @@ export function SiteHeader() {
           <Wordmark className="text-lg" />
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-medium text-ink md:flex">
-          <Link href="/jobs" className="transition-colors hover:text-tide">
-            Browse jobs
-          </Link>
-          <Link href="/about" className="transition-colors hover:text-tide">
-            About
-          </Link>
-          <Link href="/employers" className="transition-colors hover:text-tide">
-            For employers
-          </Link>
-          <Link href="/faq" className="transition-colors hover:text-tide">
-            FAQ
-          </Link>
-        </nav>
+        {!LAUNCH_GATE_ACTIVE && (
+          <nav className="hidden items-center gap-8 text-sm font-medium text-ink md:flex">
+            <Link href="/jobs" className="transition-colors hover:text-tide">
+              Browse jobs
+            </Link>
+            <Link href="/about" className="transition-colors hover:text-tide">
+              About
+            </Link>
+            <Link href="/employers" className="transition-colors hover:text-tide">
+              For employers
+            </Link>
+            <Link href="/faq" className="transition-colors hover:text-tide">
+              FAQ
+            </Link>
+          </nav>
+        )}
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -44,12 +46,9 @@ export function SiteHeader() {
             </Link>
           ) : LAUNCH_GATE_ACTIVE ? (
             // --- TEMPORARY pre-launch gate, remove this branch on launch day ---
-            <Link
-              href="/coming-soon"
-              className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper transition-colors hover:bg-tide-bright"
-            >
+            <span className="rounded-full bg-tide px-4 py-2 text-sm font-semibold text-paper">
               Coming soon
-            </Link>
+            </span>
           ) : (
             <>
               <Link

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
 import { JobsBrowser } from "@/components/jobs/jobs-browser";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export const metadata: Metadata = {
   title: "Browse jobs — Tern",
@@ -11,6 +13,8 @@ export const metadata: Metadata = {
 };
 
 export default function JobsPage() {
+  if (LAUNCH_GATE_ACTIVE) redirect("/");
+
   return (
     <>
       <SiteHeader />

@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
@@ -9,7 +9,7 @@ import { ApplyPanel } from "@/components/jobs/apply-panel";
 import { EmployerLogo } from "@/components/jobs/jobs-browser";
 import { ReportButton } from "@/components/reports/report-button";
 import { formatCloseDate, formatHours, formatPay } from "@/lib/format";
-import { LAUNCH_DATE_LABEL, LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 type Params = { id: string };
 
@@ -57,6 +57,8 @@ export default async function JobDetailPage({
 }: {
   params: Promise<Params>;
 }) {
+  if (LAUNCH_GATE_ACTIVE) redirect("/");
+
   const { id } = await params;
   const job = await getJob(id);
   if (!job) notFound();
@@ -113,17 +115,6 @@ export default async function JobDetailPage({
             </div>
           )}
 
-          {LAUNCH_GATE_ACTIVE ? (
-            <div className="mt-10 rounded-2xl border border-border-strong bg-paper-raised p-6">
-              <p className="font-serif text-lg font-semibold">
-                Applications open {LAUNCH_DATE_LABEL}
-              </p>
-              <p className="mt-2 text-[15px] text-granite">
-                Tern isn&rsquo;t accepting applications or collecting any
-                personal details until launch.
-              </p>
-            </div>
-          ) : (
           <div className="mt-10">
             <ApplyPanel
               jobId={job.id}
@@ -143,7 +134,6 @@ export default async function JobDetailPage({
               skills={job.skills}
             />
           </div>
-          )}
         </div>
       </main>
       <SiteFooter />

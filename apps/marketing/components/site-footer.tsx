@@ -2,32 +2,44 @@ import Link from "next/link";
 import { Wordmark } from "./logo";
 import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
-const columns = [
-  {
-    heading: "Product",
-    links: [
-      { href: "/#how-it-works", label: "How it works" },
-      { href: "/#trust", label: "Trust & safety" },
-      { href: "/employers", label: "For employers" },
-    ],
-  },
-  {
-    heading: "Company",
-    links: [
-      { href: "/about", label: "About" },
-      { href: "/faq", label: "FAQ" },
-      // Hidden pre-launch: no contact channel while no data is collected.
-      ...(LAUNCH_GATE_ACTIVE ? [] : [{ href: "/contact", label: "Contact" }]),
-    ],
-  },
-  {
-    heading: "Legal",
-    links: [
-      { href: "/privacy", label: "Privacy policy" },
-      { href: "/terms", label: "Terms of service" },
-    ],
-  },
-];
+// While the gate is active, every page these columns would normally
+// link to (browsing, about, employers, faq, contact) redirects straight
+// back to "/" — so those links are hidden rather than left dangling.
+const columns = LAUNCH_GATE_ACTIVE
+  ? [
+      {
+        heading: "Legal",
+        links: [
+          { href: "/privacy", label: "Privacy policy" },
+          { href: "/terms", label: "Terms of service" },
+        ],
+      },
+    ]
+  : [
+      {
+        heading: "Product",
+        links: [
+          { href: "/#how-it-works", label: "How it works" },
+          { href: "/#trust", label: "Trust & safety" },
+          { href: "/employers", label: "For employers" },
+        ],
+      },
+      {
+        heading: "Company",
+        links: [
+          { href: "/about", label: "About" },
+          { href: "/faq", label: "FAQ" },
+          { href: "/contact", label: "Contact" },
+        ],
+      },
+      {
+        heading: "Legal",
+        links: [
+          { href: "/privacy", label: "Privacy policy" },
+          { href: "/terms", label: "Terms of service" },
+        ],
+      },
+    ];
 
 export function SiteFooter() {
   return (
@@ -41,7 +53,7 @@ export function SiteFooter() {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-8 sm:gap-14">
+          <div className="flex flex-wrap gap-8 sm:gap-14">
             {columns.map((column) => (
               <div key={column.heading}>
                 <p className="font-mono text-xs uppercase tracking-[0.1em] text-granite-soft">

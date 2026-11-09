@@ -5,8 +5,12 @@ import { HowItWorks } from "@/components/how-it-works";
 import { Trust } from "@/components/trust";
 import { EmployerPitch } from "@/components/employer-pitch";
 import { SiteFooter } from "@/components/site-footer";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
+import ComingSoonPage from "@/app/coming-soon/page";
 
 export default function Home() {
+  if (LAUNCH_GATE_ACTIVE) return <ComingSoonPage />;
+
   return (
     <>
       <SiteHeader />
