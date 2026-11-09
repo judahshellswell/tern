@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { PageHeader } from "@/components/page-header";
+import { LAUNCH_GATE_ACTIVE } from "@/lib/launch-gate";
 
 export const metadata: Metadata = {
   title: "Contact — Tern",
@@ -11,6 +13,8 @@ export const metadata: Metadata = {
 const CONTACT_EMAIL = "hello@tern.je";
 
 export default function ContactPage() {
+  if (LAUNCH_GATE_ACTIVE) redirect("/coming-soon");
+
   return (
     <>
       <SiteHeader />
